@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="src/emporio/web/logo.png" alt="Empório da Música" width="130">
+</p>
+
 # Téo — agente de atendimento da Empório da Música
 
 Agente de atendimento por mensagem de texto para a **Empório da Música**, loja
@@ -63,6 +67,14 @@ importam, e cada um explica a decisão que demonstra:
 
 É a mesma camada que o agente consulta ao conversar: o que aparece ali é o que
 ele recebe.
+
+![A página de ferramentas, com o caso do PIX executado: HTTP 200 em 20ms, sem LLM](docs/img/explorador.jpg)
+
+<sub>O roteiro sugerido com o caso do PIX já executado. O rodapé da resposta
+marca <code>HTTP 200 · 20 ms · sem LLM</code>, e a nota em âmbar explica a
+decisão que aquele payload demonstra — os 5% do PIX não incidindo sobre preço
+já promocional (§6.2), e o parcelamento limitado a 5x pela parcela mínima da
+faixa (§3.1).</sub>
 
 <sub>Hospedado em função serverless. O banco e o índice de políticas são
 construídos na primeira requisição de cada instância (~1,3s) em disco efêmero,

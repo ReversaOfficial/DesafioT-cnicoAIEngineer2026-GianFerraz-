@@ -87,6 +87,9 @@
     background: transparent; border: 0; color: var(--text); text-align: left;
     padding: 8px 10px; border-radius: 9px; cursor: pointer; font-family: var(--mono);
     font-size: .82rem;
+    /* `verificar_elegibilidade_devolucao` é mais largo que a coluna: sem isto
+       o nome estoura e o marcador §9 quebra sozinho na linha de baixo. */
+    line-height: 1.35; word-break: break-word;
   }
   .tool-list button:hover { background: var(--panel-2); }
   .tool-list button.on { background: var(--amber-soft); color: var(--amber); }
