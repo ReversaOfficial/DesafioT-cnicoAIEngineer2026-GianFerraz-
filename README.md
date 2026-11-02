@@ -35,6 +35,7 @@ identidade da cliente.</sub>
 - [O que o agente faz](#o-que-o-agente-faz)
 - [Arquitetura](#arquitetura)
 - [Decisões técnicas e por quê](#decisões-técnicas-e-por-quê)
+- [Log de decisões, commit por commit](docs/DECISIONS.md)
 - [Tratamento dos dados](#tratamento-dos-dados)
 - [Suposições e ambiguidades resolvidas](#suposições-e-ambiguidades-resolvidas)
 - [Como eu sei que funciona](#como-eu-sei-que-funciona)
@@ -240,6 +241,12 @@ Detalhes em [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 ---
 
 ## Decisões técnicas e por quê
+
+> As seis decisões abaixo são as de arquitetura, tratadas em profundidade. Para
+> **o porquê de cada ação do projeto, uma entrada por commit** — com a
+> alternativa descartada, o resultado medido e o ponto em que eu mudaria de
+> ideia — veja o [log de decisões](docs/DECISIONS.md). Ele inclui também as
+> cinco vezes em que a verificação derrubou uma afirmação minha.
 
 ### 1. Abordagem: function calling com ferramentas tipadas + RAG só onde faz sentido
 
@@ -787,6 +794,7 @@ contradiz. É nessa segunda parte que está o projeto.
 │   └── políticas_da_loja.pdf
 │
 ├── docs/
+│   ├── DECISIONS.md              log de decisões, uma entrada por commit
 │   ├── ARCHITECTURE.md           detalhe de arquitetura e fluxo de um turno
 │   ├── DATA_QUALITY.md           relatório gerado pelo ETL
 │   ├── EVALUATION.md             resultado gerado pelo eval
