@@ -26,6 +26,23 @@ DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com"
 MAX_RETRIES = 3
 
 
+def _vale_trocar_de_modelo(erro: LLMError) -> bool:
+    """Se o erro é do modelo, trocar resolve; se é da chave, não.
+
+    Cota esgotada (429) e versão descontinuada (404) são específicos do modelo
+    e cada modelo tem a sua própria cota gratuita. Credencial inválida (401/403)
+    vale para todos, e insistir só gastaria tempo.
+    """
+    texto = str(erro).lower()
+    return (
+        "429" in texto
+        or "404" in texto
+        or "limite de requisi" in texto
+        or "não encontrado" in texto
+        or "instabilidade" in texto  # 503 "high demand" é por modelo
+    )
+
+
 class GeminiClient:
     provider = "gemini"
 
@@ -37,6 +54,7 @@ class GeminiClient:
         base_url: str = "",
         temperature: float = 0.3,
         timeout: float = 90.0,
+        fallback_models: tuple[str, ...] = (),
     ) -> None:
         if not api_key:
             raise LLMError(
@@ -48,6 +66,13 @@ class GeminiClient:
         self.base_url = (base_url or DEFAULT_BASE_URL).rstrip("/")
         self.temperature = temperature
         self.timeout = timeout
+        self.fallback_models = fallback_models
+        # Modelo que efetivamente atendeu a última chamada. Pode diferir de
+        # `model` quando a cota do principal esgota.
+        self.active_model = model
+        # Troca de modelo registrada para aparecer no CLI e no log — fallback
+        # silencioso esconderia que a resposta veio de um modelo mais simples.
+        self.model_switches: list[tuple[str, str, str]] = []
 
     # -- tradução do formato neutro ----------------------------------------
 
@@ -126,7 +151,6 @@ class GeminiClient:
         messages: list[Message],
         tools: list[dict] | None = None,
     ) -> LLMResponse:
-        url = f"{self.base_url}/v1beta/models/{self.model}:generateContent"
         payload: dict[str, Any] = {
             "contents": self._convert_messages(messages),
             "generationConfig": {"temperature": self.temperature},
@@ -136,8 +160,34 @@ class GeminiClient:
         if tools:
             payload["tools"] = self._convert_tools(tools)
 
-        data = self._post(url, payload)
-        return self._parse(data)
+        # Tenta o modelo ativo e, se a cota dele acabou (ou a versão saiu do
+        # ar), desce na cadeia de reserva. Cada modelo do Gemini tem cota
+        # gratuita própria, então isso é o que mantém o atendimento de pé para
+        # quem está no nível gratuito.
+        candidatos = [self.active_model]
+        candidatos += [m for m in self.fallback_models if m != self.active_model]
+
+        ultimo_erro: LLMError | None = None
+        for modelo in candidatos:
+            url = f"{self.base_url}/v1beta/models/{modelo}:generateContent"
+            try:
+                data = self._post(url, payload)
+            except LLMError as exc:
+                ultimo_erro = exc
+                if not _vale_trocar_de_modelo(exc):
+                    raise
+                continue
+            if modelo != self.active_model:
+                motivo = "cota esgotada ou modelo indisponível"
+                self.model_switches.append((self.active_model, modelo, motivo))
+                self.active_model = modelo
+            return self._parse(data)
+
+        assert ultimo_erro is not None
+        raise LLMError(
+            f"Todos os modelos tentados falharam ({', '.join(candidatos)}). "
+            f"Último erro: {ultimo_erro}"
+        ) from ultimo_erro
 
     def _post(self, url: str, payload: dict) -> dict:
         last_error: Exception | None = None

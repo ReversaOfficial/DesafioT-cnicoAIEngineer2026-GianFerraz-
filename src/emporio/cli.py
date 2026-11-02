@@ -81,6 +81,47 @@ def _print_turn_footer(turn) -> None:
     console.print(Text("  " + " · ".join(partes), style="dim"))
 
 
+def _send(service: AgentService, session_id: str, mensagem: str):
+    """Envia uma mensagem tratando falha de provedor como mensagem, não crash.
+
+    Nenhum comando desta CLI deve mostrar traceback ao usuário por causa de
+    cota, rede ou instabilidade do provedor: isso são condições esperadas de
+    operação, e quem está olhando a ferramenta precisa de uma orientação, não
+    de uma pilha de chamadas.
+    """
+    try:
+        with console.status("[dim]consultando…[/dim]", spinner="dots"):
+            return service.send(session_id, mensagem)
+    except LLMError as exc:
+        console.print(
+            Panel(
+                Text(str(exc), style="red"),
+                title="Não consegui falar com o modelo",
+                border_style="red",
+            )
+        )
+        console.print(
+            "[dim]A camada de dados continua funcionando: tente "
+            "`emporio tool buscar_produtos termo=violao` ou `emporio models` "
+            "para ver outros modelos disponíveis.[/dim]"
+        )
+        return None
+
+
+def _print_model_switches(service: AgentService) -> None:
+    """Avisa quando a resposta veio de um modelo de reserva."""
+    trocas = getattr(service.client, "model_switches", None)
+    if not trocas:
+        return
+    de, para, motivo = trocas[-1]
+    console.print(
+        Text(
+            f"  ⓘ modelo trocado de {de} para {para} ({motivo})",
+            style="yellow",
+        )
+    )
+
+
 def _build_service() -> AgentService:
     try:
         return AgentService()
@@ -161,9 +202,12 @@ def chat(
 
     # Modo one-shot: útil para script, demo e pipeline.
     if mensagem:
-        turn = service.send(session_id, mensagem)
+        turn = _send(service, session_id, mensagem)
+        if turn is None:
+            raise typer.Exit(code=1)
         if trace:
             _print_trace(turn)
+            _print_model_switches(service)
         console.print(turn.reply)
         raise typer.Exit()
 
@@ -235,16 +279,14 @@ def chat(
             console.print("[yellow]Comando não reconhecido. Tente /ajuda.[/yellow]")
             continue
 
-        try:
-            with console.status("[dim]consultando…[/dim]", spinner="dots"):
-                turn = service.send(session_id, entrada)
-        except LLMError as exc:
-            console.print(Panel(Text(str(exc), style="red"), border_style="red"))
-            continue
+        turn = _send(service, session_id, entrada)
+        if turn is None:
+            continue  # a conversa segue; só este turno falhou
 
         console.print()
         if trace:
             _print_trace(turn)
+        _print_model_switches(service)
         console.print(Text(f"{AGENT_NAME}:", style=AGENTE_COR), end=" ")
         console.print(turn.reply)
         if trace:
@@ -279,9 +321,12 @@ def ask(
     """Faz uma pergunta avulsa ao agente, sem abrir sessão interativa."""
     service = _build_service()
     session_id = service.open_session(None, channel="cli-ask")
-    turn = service.send(session_id, " ".join(pergunta))
+    turn = _send(service, session_id, " ".join(pergunta))
+    if turn is None:
+        raise typer.Exit(code=1)
     if trace:
         _print_trace(turn)
+        _print_model_switches(service)
         console.print()
     console.print(turn.reply)
 
@@ -567,11 +612,18 @@ def demo(
 
     for mensagem in linhas:
         console.print(f"[{CLIENTE_COR}]Você:[/] {mensagem}")
-        with console.status("[dim]consultando…[/dim]", spinner="dots"):
-            turn = service.send(session_id, mensagem)
+        turn = _send(service, session_id, mensagem)
+        if turn is None:
+            console.print(
+                "[yellow]Transcrição interrompida neste ponto. O arquivo não "
+                "foi gravado para não registrar uma conversa incompleta como "
+                "se fosse completa.[/yellow]"
+            )
+            raise typer.Exit(code=1)
         console.print(Text(f"{AGENT_NAME}:", style=AGENTE_COR), end=" ")
         console.print(turn.reply)
         _print_trace(turn)
+        _print_model_switches(service)
         console.print()
 
         partes += [f"**Cliente:** {mensagem}", ""]
@@ -590,13 +642,24 @@ def demo(
             ]
         partes += [f"**{AGENT_NAME}:** {turn.reply}", "", "---", ""]
 
-    partes += [
+    modelo_ativo = getattr(service.client, "active_model", config["modelo"])
+    trocas = getattr(service.client, "model_switches", [])
+    rodape = [
         "",
         f"<sub>Sessão `{session_id}`. "
         "As consultas listadas são as chamadas de ferramenta efetivamente "
-        "executadas em cada turno, capturadas durante a conversa.</sub>",
-        "",
+        "executadas em cada turno, capturadas durante a conversa.",
     ]
+    if trocas:
+        # Honestidade sobre a transcrição: se um modelo de reserva entrou no
+        # meio da conversa, isso vai registrado.
+        rodape.append(
+            f" O modelo mudou durante a conversa por esgotamento de cota do "
+            f"nível gratuito; o último a responder foi `{modelo_ativo}`."
+        )
+    rodape.append("</sub>")
+    rodape.append("")
+    partes += rodape
 
     texto = "\n".join(partes)
     if saida:

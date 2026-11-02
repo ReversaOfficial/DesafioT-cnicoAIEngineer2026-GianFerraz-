@@ -37,7 +37,11 @@ def build_client(
         "timeout": settings.request_timeout,
     }
     if chosen == "gemini":
-        return GeminiClient(api_key=settings.api_key, **common)
+        return GeminiClient(
+            api_key=settings.api_key,
+            fallback_models=settings.fallback_models,
+            **common,
+        )
     if chosen == "anthropic":
         return AnthropicClient(api_key=settings.api_key, **common)
     return OpenAICompatClient(provider=chosen, api_key=settings.api_key, **common)
@@ -48,7 +52,7 @@ def describe_configuration() -> dict:
 
     Nunca expõe o valor da chave — apenas se existe.
     """
-    return {
+    config = {
         "provedor": settings.provider,
         "modelo": settings.resolved_model,
         "temperatura": settings.temperature,
@@ -56,3 +60,6 @@ def describe_configuration() -> dict:
         "base_url": settings.base_url or "(default do provedor)",
         "max_iteracoes_de_ferramenta": settings.max_tool_iterations,
     }
+    reservas = settings.fallback_models
+    config["modelos_de_reserva"] = ", ".join(reservas) if reservas else "desativado"
+    return config

@@ -44,6 +44,26 @@ DEFAULT_MODELS: dict[str, str] = {
 }
 
 # Variável de ambiente que carrega a chave de cada provedor.
+# Cadeia de reserva por provedor.
+#
+# O nível gratuito do Gemini concede ~20 requisições por dia POR MODELO, e um
+# agente faz 2 a 3 chamadas por turno — ou seja, uma conversa de oito mensagens
+# esgota a cota de um modelo. Como cada modelo tem a sua própria cota, trocar
+# de modelo ao receber 429 mantém o atendimento de pé.
+#
+# A ordem é por capacidade decrescente: só desce para um modelo mais simples
+# quando o melhor já não responde. A troca é registrada e aparece em
+# `emporio doctor`, nunca acontece em silêncio.
+FALLBACK_MODELS: dict[str, tuple[str, ...]] = {
+    "gemini": (
+        "gemini-3-flash-preview",
+        "gemini-3.6-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-3.5-flash-lite",
+        "gemini-flash-lite-latest",
+    ),
+}
+
 API_KEY_ENV: dict[str, str] = {
     "gemini": "GEMINI_API_KEY",
     "openai": "OPENAI_API_KEY",
@@ -124,6 +144,21 @@ class Settings:
     @property
     def resolved_model(self) -> str:
         return self.model or DEFAULT_MODELS.get(self.provider, "")
+
+    @property
+    def fallback_models(self) -> tuple[str, ...]:
+        """Modelos de reserva, sem repetir o principal.
+
+        Desativável com `EMPORIO_LLM_FALLBACK=0` para quem quiser garantia de
+        que uma única versão de modelo atendeu a conversa inteira — é o que se
+        quer ao medir, e o que o eval usa.
+        """
+        if not _env_flag("EMPORIO_LLM_FALLBACK", True):
+            return ()
+        principal = self.resolved_model
+        return tuple(
+            m for m in FALLBACK_MODELS.get(self.provider, ()) if m != principal
+        )
 
     @property
     def api_key(self) -> str:

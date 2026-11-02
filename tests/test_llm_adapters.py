@@ -173,6 +173,89 @@ class TestGemini:
         assert "aistudio" in str(exc.value)
 
 
+class TestFallbackDeModelo:
+    """Cota do nível gratuito do Gemini é por modelo; trocar mantém de pé."""
+
+    def _cliente(self, respostas: list) -> GeminiClient:
+        """Cliente com `_post` substituído por um roteiro de resultados."""
+        cliente = GeminiClient(
+            api_key="k",
+            model="principal",
+            fallback_models=("reserva-1", "reserva-2"),
+        )
+        chamadas: list[str] = []
+
+        def fake_post(url: str, payload: dict) -> dict:
+            modelo = url.split("/models/")[1].split(":")[0]
+            chamadas.append(modelo)
+            resultado = respostas.pop(0)
+            if isinstance(resultado, Exception):
+                raise resultado
+            return resultado
+
+        cliente._post = fake_post  # type: ignore[method-assign]
+        cliente.chamadas = chamadas  # type: ignore[attr-defined]
+        return cliente
+
+    _OK = {"candidates": [{"content": {"parts": [{"text": "ok"}]}}]}
+
+    def test_usa_o_principal_quando_ele_responde(self):
+        cliente = self._cliente([self._OK])
+        assert cliente.complete("s", [Message(role="user", content="oi")]).text == "ok"
+        assert cliente.chamadas == ["principal"]
+        assert cliente.model_switches == []
+
+    def test_desce_para_a_reserva_quando_a_cota_esgota(self):
+        cliente = self._cliente(
+            [LLMError("gemini: limite de requisições atingido (HTTP 429)"), self._OK]
+        )
+        assert cliente.complete("s", [Message(role="user", content="oi")]).text == "ok"
+        assert cliente.chamadas == ["principal", "reserva-1"]
+        assert cliente.active_model == "reserva-1"
+        assert cliente.model_switches[0][:2] == ("principal", "reserva-1")
+
+    def test_desce_tambem_em_modelo_descontinuado(self):
+        cliente = self._cliente([LLMError("gemini: modelo não encontrado (HTTP 404)"), self._OK])
+        cliente.complete("s", [Message(role="user", content="oi")])
+        assert cliente.active_model == "reserva-1"
+
+    def test_desce_em_sobrecarga_do_modelo(self):
+        cliente = self._cliente([LLMError("gemini: instabilidade no provedor (HTTP 503)"), self._OK])
+        cliente.complete("s", [Message(role="user", content="oi")])
+        assert cliente.active_model == "reserva-1"
+
+    def test_credencial_invalida_nao_tenta_outro_modelo(self):
+        """Chave ruim vale para todos; insistir só gastaria tempo."""
+        cliente = self._cliente([LLMError("gemini: credencial rejeitada (HTTP 401)")])
+        with pytest.raises(LLMError):
+            cliente.complete("s", [Message(role="user", content="oi")])
+        assert cliente.chamadas == ["principal"]
+
+    def test_permanece_na_reserva_nas_chamadas_seguintes(self):
+        """Não faz sentido voltar a bater num modelo cuja cota já acabou."""
+        cliente = self._cliente(
+            [LLMError("HTTP 429 limite de requisições"), self._OK, self._OK]
+        )
+        cliente.complete("s", [Message(role="user", content="oi")])
+        cliente.complete("s", [Message(role="user", content="de novo")])
+        assert cliente.chamadas == ["principal", "reserva-1", "reserva-1"]
+
+    def test_todos_falhando_gera_erro_listando_as_tentativas(self):
+        cliente = self._cliente([LLMError("HTTP 429")] * 3)
+        with pytest.raises(LLMError) as exc:
+            cliente.complete("s", [Message(role="user", content="oi")])
+        assert "principal" in str(exc.value)
+        assert "reserva-2" in str(exc.value)
+
+    def test_sem_reservas_configuradas_propaga_o_erro(self):
+        cliente = GeminiClient(api_key="k", model="unico", fallback_models=())
+        cliente._post = lambda url, payload: (_ for _ in ()).throw(  # type: ignore[method-assign]
+            LLMError("HTTP 429 limite de requisições")
+        )
+        with pytest.raises(LLMError):
+            cliente.complete("s", [Message(role="user", content="oi")])
+
+
 class TestOpenAICompat:
     def test_ferramentas_no_envelope_function(self):
         convertidas = OpenAICompatClient._convert_tools(tool_schemas())
