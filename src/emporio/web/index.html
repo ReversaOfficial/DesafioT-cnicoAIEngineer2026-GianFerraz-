@@ -82,6 +82,7 @@
     white-space: nowrap;
   }
   .hbtn:hover { color: var(--text); border-color: #4a4337; }
+  a.hbtn { text-decoration: none; display: inline-block; }
   .hbtn.on { color: #1a1510; background: var(--amber); border-color: var(--amber); }
 
   /* ---------- conversa ---------- */
@@ -221,6 +222,7 @@
     </div>
     <button class="hbtn" id="btn-trace" title="Mostra quais consultas o agente fez">consultas</button>
     <button class="hbtn" id="btn-reset" title="Começa uma conversa nova">nova</button>
+    <a class="hbtn" href="/ferramentas" title="Roda as 11 ferramentas sem LLM, sem cota">ferramentas</a>
   </header>
 
   <div class="chat" id="chat"></div>

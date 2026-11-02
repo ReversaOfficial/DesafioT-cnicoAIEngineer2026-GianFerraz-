@@ -228,3 +228,72 @@ class TestServicoDeAtendimento:
         service.send(session_id, "oi")
         assert len(service.transcript(session_id)) == 2
         assert service.configuration()["persistencia"] == "desativada"
+
+
+class TestExecucaoDeFerramentaPelaAPI:
+    """`POST /api/tool/{nome}` — a camada determinística exposta como serviço.
+
+    Existe para que a regra de negócio seja inspecionável sem gastar chamada de
+    modelo, e por isso tem de funcionar **sem chave de API configurada**. É
+    também a parte do serviço que continua de pé quando a cota do provedor
+    esgota, então o contrato aqui é mais importante do que parece.
+    """
+
+    def setup_method(self):
+        self.client = TestClient(api)
+
+    def _executar(self, nome: str, **argumentos):
+        return self.client.post(f"/api/tool/{nome}", json={"argumentos": argumentos})
+
+    def test_executa_sem_chave_de_api(self):
+        resposta = self._executar("promocoes_ativas")
+        assert resposta.status_code == 200
+        corpo = resposta.json()
+        assert corpo["ferramenta"] == "promocoes_ativas"
+        assert corpo["le_dado_pessoal"] is False
+        # Só 4 das 25 promoções da base estão ativas.
+        assert corpo["resultado"]["total"] == 4
+
+    def test_coage_argumento_que_chega_como_texto(self):
+        """A interface web manda tudo como string; o endpoint tem de aceitar."""
+        resultado = self._executar("calcular_preco", product_id="121").json()["resultado"]
+        assert resultado["product_id"] == 121
+        # §6.2: os 5% do PIX não incidem sobre preço já promocional.
+        assert resultado["pix"]["desconto_pix_aplicado"] is False
+
+    def test_ferramenta_sensivel_nao_vaza_pela_api(self):
+        """§9 — expor a ferramenta como endpoint não afrouxa a verificação."""
+        resposta = self._executar("consultar_pedido", order_id=7)
+        assert resposta.status_code == 200
+        corpo = resposta.json()
+        assert corpo["le_dado_pessoal"] is True
+        assert corpo["resultado"]["verificacao_necessaria"] is True
+        # Mesma tentativa de vazamento dos testes da ferramenta, agora no HTTP.
+        serializado = resposta.text.lower()
+        for vazamento in ("letícia", "leticia", "99789", "159", "shelby"):
+            assert vazamento not in serializado
+
+    def test_argumento_obrigatorio_faltando_diz_o_que_falta(self):
+        resposta = self._executar("consultar_politicas")
+        assert resposta.status_code == 422
+        detalhe = resposta.json()["detail"]
+        assert detalhe["faltando"] == ["pergunta"]
+        assert "limite" in detalhe["aceita"]
+
+    def test_ferramenta_inexistente_lista_as_validas(self):
+        resposta = self._executar("ferramenta_que_nao_existe")
+        assert resposta.status_code == 404
+        detalhe = resposta.json()["detail"]
+        assert len(detalhe["disponiveis"]) == 11
+        assert "buscar_produtos" in detalhe["disponiveis"]
+
+    def test_erro_de_negocio_vem_como_200_com_payload(self):
+        """Pedido inexistente é informação, não falha de transporte."""
+        resposta = self._executar("consultar_pedido", order_id=999999)
+        assert resposta.status_code == 200
+        assert "erro" in str(resposta.json()["resultado"]).lower()
+
+    def test_explorador_e_servido(self):
+        resposta = self.client.get("/ferramentas")
+        assert resposta.status_code == 200
+        assert "text/html" in resposta.headers["content-type"]

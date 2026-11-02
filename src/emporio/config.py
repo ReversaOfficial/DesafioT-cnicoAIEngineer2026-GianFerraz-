@@ -74,6 +74,12 @@ API_KEY_ENV: dict[str, str] = {
 }
 
 
+def _env_path(nome: str, default: Path) -> Path:
+    """Caminho vindo do ambiente, expandindo `~`, com default do repositório."""
+    raw = (os.getenv(nome) or "").strip()
+    return Path(raw).expanduser() if raw else default
+
+
 def _env_flag(name: str, default: bool = False) -> bool:
     raw = os.getenv(name)
     if raw is None or raw.strip() == "":
@@ -114,8 +120,14 @@ class Settings:
     # --- Caminhos ----------------------------------------------------------
     root_dir: Path = ROOT_DIR
     data_dir: Path = ROOT_DIR / "data"
-    var_dir: Path = ROOT_DIR / "var"
-    logs_dir: Path = ROOT_DIR / "logs"
+    # Derivados (banco, índice, conversas) e log ficam fora da árvore do código
+    # quando `EMPORIO_VAR_DIR` / `EMPORIO_LOGS_DIR` apontam para outro lugar.
+    # Existe porque em hospedagem serverless o disco do pacote é somente-leitura
+    # e só `/tmp` aceita escrita: sem isto o processo morre ao criar o diretório.
+    var_dir: Path = field(default_factory=lambda: _env_path("EMPORIO_VAR_DIR", ROOT_DIR / "var"))
+    logs_dir: Path = field(
+        default_factory=lambda: _env_path("EMPORIO_LOGS_DIR", ROOT_DIR / "logs")
+    )
 
     # --- Observabilidade ---------------------------------------------------
     log_turns: bool = field(default_factory=lambda: _env_flag("EMPORIO_LOG_TURNS", True))

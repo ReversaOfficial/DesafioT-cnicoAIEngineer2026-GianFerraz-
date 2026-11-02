@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse, JSONResponse
@@ -51,6 +52,12 @@ def get_service() -> AgentService:
 # ---------------------------------------------------------------------------
 # Modelos
 # ---------------------------------------------------------------------------
+
+
+class ToolRequest(BaseModel):
+    argumentos: dict[str, Any] = Field(
+        default_factory=dict, description="Argumentos da ferramenta, em pares chave/valor."
+    )
 
 
 class ChatRequest(BaseModel):
@@ -127,6 +134,62 @@ def listar_ferramentas() -> dict:
     }
 
 
+@api.post("/api/tool/{nome}")
+def executar_ferramenta(nome: str, request: ToolRequest) -> dict:
+    """Executa uma ferramenta determinística, sem passar pelo LLM.
+
+    Espelha o `emporio tool` da CLI e existe pelo mesmo motivo: a camada de
+    regras precisa ser inspecionável por quem avalia. Preço, prazo e política
+    saem daqui sem gastar chamada de modelo e **sem exigir chave de API** — o
+    que também mantém esta parte do serviço de pé quando a cota do provedor
+    esgota.
+
+    As ferramentas que leem dado pessoal continuam exigindo confirmação de
+    identidade (§9): expor o endpoint não afrouxa a regra, porque a regra está
+    dentro da ferramenta, não na camada de transporte.
+    """
+    from emporio.agent.loop import _coerce_arguments
+    from emporio.tools.common import ToolError
+    from emporio.tools.registry import TOOLS, get_tool
+
+    spec = get_tool(nome)
+    if spec is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "erro": f"Ferramenta '{nome}' não existe.",
+                "disponiveis": [t.name for t in TOOLS],
+            },
+        )
+
+    bruto = {k: v for k, v in request.argumentos.items() if v not in (None, "")}
+    aceitos = spec.parameters.get("properties", {})
+    faltando = [c for c in spec.parameters.get("required", []) if c not in bruto]
+    if faltando:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "erro": "Faltam argumentos obrigatórios.",
+                "faltando": faltando,
+                "aceita": list(aceitos),
+            },
+        )
+
+    try:
+        resultado = spec.handler(**_coerce_arguments(spec, bruto))
+    except ToolError as exc:
+        # Erro de ferramenta é resposta de negócio, não falha de transporte:
+        # "pedido não encontrado" é informação, e o 200 preserva o payload que
+        # o agente receberia no mesmo caso.
+        resultado = exc.to_dict()
+    return {
+        "ferramenta": spec.name,
+        "argumentos": bruto,
+        "le_dado_pessoal": spec.sensitive,
+        "resultado": resultado,
+    }
+
+
 @api.post("/api/chat", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
     """Envia uma mensagem ao agente e devolve a resposta."""
@@ -183,9 +246,23 @@ def historico(session_id: str) -> dict:
 
 # `response_model=None`: o retorno é um Response pronto, não um modelo a
 # serializar — sem isso o FastAPI tenta derivar schema da união de tipos.
-@api.get("/", response_model=None, include_in_schema=False)
-def index() -> Response:
-    page = WEB_DIR / "index.html"
+def _servir(nome: str) -> Response:
+    page = WEB_DIR / nome
     if not page.exists():  # pragma: no cover
         return JSONResponse({"erro": "Interface web não encontrada."}, status_code=404)
     return FileResponse(page, media_type="text/html")
+
+
+@api.get("/", response_model=None, include_in_schema=False)
+def index() -> Response:
+    return _servir("index.html")
+
+
+@api.get("/ferramentas", response_model=None, include_in_schema=False)
+def explorador() -> Response:
+    """Explorador da camada determinística.
+
+    Página separada do chat de propósito: ela funciona sem chave de API e sem
+    cota, então continua de pé quando o provedor de LLM não responde.
+    """
+    return _servir("ferramentas.html")
