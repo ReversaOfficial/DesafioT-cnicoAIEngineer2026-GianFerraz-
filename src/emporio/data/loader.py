@@ -660,9 +660,3 @@ def _write_report(findings: list[Finding], *, counts: dict[str, int]) -> None:
             ]
 
     (docs / "DATA_QUALITY.md").write_text("\n".join(lines), encoding="utf-8")
-
-
-if __name__ == "__main__":  # pragma: no cover - atalho de desenvolvimento
-    found = build_database()
-    print(f"Banco construído em {settings.db_path}")
-    print(f"{len(found)} ocorrências registradas em docs/DATA_QUALITY.md")

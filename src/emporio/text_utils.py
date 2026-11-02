@@ -41,6 +41,23 @@ def normalize(text: str) -> str:
     return re.sub(r"\s+", " ", strip_accents(text).lower()).strip()
 
 
+def fold_preserving(text: str) -> str:
+    """Minúsculas e sem acento, **mantendo o comprimento do texto**.
+
+    `strip_accents` pode alterar o tamanho da string (um caractere decompõe em
+    vários), o que desalinha índices. Esta versão mapeia caractere a caractere
+    para que uma posição encontrada no texto dobrado valha no texto original —
+    é o que permite localizar os títulos de seção do manual e recortar o
+    trecho correspondente sem perder a formatação original.
+    """
+    out: list[str] = []
+    for ch in text:
+        decomposed = unicodedata.normalize("NFKD", ch)
+        base = next((c for c in decomposed if not unicodedata.combining(c)), ch)
+        out.append(base.lower())
+    return "".join(out)
+
+
 def tokenize(text: str, *, drop_stopwords: bool = True, min_len: int = 2) -> list[str]:
     """Quebra o texto em tokens normalizados.
 
