@@ -128,9 +128,15 @@
     object-fit: cover;
     flex-shrink: 0;
   }
-  .who { flex: 1; min-width: 0; }
-  .who b { display: block; font-size: 15px; letter-spacing: .2px; }
+  .who { flex: 1 1 auto; min-width: 0; }
+  /* Nome e status numa linha só, cortando com reticências em vez de quebrar
+     palavra por palavra quando o espaço aperta. */
+  .who b, .who span {
+    display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .who b { font-size: 15px; letter-spacing: .2px; }
   .who span { font-size: 12.5px; color: var(--muted); }
+  .acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; flex: 0 0 auto; }
   .dot {
     display: inline-block; width: 7px; height: 7px;
     border-radius: 50%; background: var(--online); margin-right: 5px;
@@ -270,6 +276,11 @@
     color: var(--rodape);
     text-align: center;
   }
+  @media (max-width: 620px) {
+    header { padding: 12px 14px; }
+    .acoes { flex-basis: 100%; justify-content: flex-start; }
+    .hbtn { font-size: 11.5px; padding: 5px 10px; }
+  }
   @media (max-width: 600px) {
     body { padding: 0; }
     .app { height: 100vh; border-radius: 0; border: none; }
@@ -285,11 +296,13 @@
       <b>Téo &middot; Empório da Música</b>
       <span id="status"><span class="dot off"></span>conectando…</span>
     </div>
-    <button class="hbtn" id="btn-trace" title="Mostra quais consultas o agente fez">consultas</button>
-    <button class="hbtn" id="btn-reset" title="Começa uma conversa nova">nova</button>
-    <a class="hbtn" href="/ferramentas" id="lnk-ferramentas" title="Roda as 11 ferramentas sem LLM, sem cota">ferramentas</a>
-    <button class="hbtn" id="btn-idioma" title="Switch the interface to English">EN</button>
-    <button class="hbtn" id="btn-tema" title="Alterna entre tema claro e escuro">☀</button>
+    <div class="acoes">
+      <button class="hbtn" id="btn-trace" title="Mostra quais consultas o agente fez">consultas</button>
+      <button class="hbtn" id="btn-reset" title="Começa uma conversa nova">nova</button>
+      <a class="hbtn" href="/ferramentas" id="lnk-ferramentas" title="Roda as 11 ferramentas sem LLM, sem cota">ferramentas</a>
+      <button class="hbtn" id="btn-idioma" title="Switch the interface to English">EN</button>
+      <button class="hbtn" id="btn-tema" title="Alterna entre tema claro e escuro">☀</button>
+    </div>
   </header>
 
   <div class="chat" id="chat"></div>
