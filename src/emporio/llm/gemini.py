@@ -190,6 +190,14 @@ class GeminiClient:
         ) from ultimo_erro
 
     def _post(self, url: str, payload: dict) -> dict:
+        """Uma requisição, com retentativa só para o que é transitório.
+
+        Cota (429) e sobrecarga do modelo (503) **não** são retentados aqui:
+        esses erros valem para o modelo inteiro, e quem resolve é a troca de
+        modelo em `complete`. Insistir com backoff antes de trocar faria o
+        cliente esperar minutos por uma resposta que já se sabe que não vem —
+        foi exatamente o que aconteceu no primeiro teste da interface web.
+        """
         last_error: Exception | None = None
         for attempt in range(MAX_RETRIES):
             try:
@@ -201,19 +209,16 @@ class GeminiClient:
                 )
             except httpx.HTTPError as exc:  # rede caiu, DNS, timeout
                 last_error = exc
+                if attempt == MAX_RETRIES - 1:
+                    break
                 time.sleep(1.5 * (attempt + 1))
                 continue
             if response.status_code == 200:
                 return response.json()
-            # 429 e 5xx valem nova tentativa; o resto é erro definitivo.
-            if response.status_code == 429 or response.status_code >= 500:
-                last_error = friendly_http_error(
-                    self.provider, response.status_code, response.text
-                )
-                time.sleep(2.0 * (attempt + 1))
-                continue
+            # Erro específico do modelo: devolve na hora para `complete` poder
+            # descer na cadeia de reserva.
             raise friendly_http_error(self.provider, response.status_code, response.text)
-        raise LLMError(f"gemini: falha após {MAX_RETRIES} tentativas. {last_error}")
+        raise LLMError(f"gemini: falha de rede após {MAX_RETRIES} tentativas. {last_error}")
 
     @staticmethod
     def _parse(data: dict) -> LLMResponse:
