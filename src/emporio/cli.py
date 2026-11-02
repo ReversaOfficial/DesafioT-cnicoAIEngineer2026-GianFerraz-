@@ -361,6 +361,18 @@ def run_tool(
         chave, _, valor = item.partition("=")
         bruto[chave.strip()] = valor.strip()
 
+    aceitos = spec.parameters.get("properties", {})
+    desconhecidos = [chave for chave in bruto if chave not in aceitos]
+    if desconhecidos:
+        console.print(
+            f"[yellow]Ignorando argumento sem efeito: {', '.join(desconhecidos)}.[/yellow]"
+        )
+    faltando = [chave for chave in spec.parameters.get("required", []) if chave not in bruto]
+    if faltando:
+        console.print(f"[red]Faltam argumentos obrigatórios: {', '.join(faltando)}.[/red]")
+        console.print(f"'{nome}' aceita: {', '.join(aceitos) or '(nenhum)'}")
+        raise typer.Exit(code=1)
+
     try:
         resultado = spec.handler(**_coerce_arguments(spec, bruto))
     except ToolError as exc:
