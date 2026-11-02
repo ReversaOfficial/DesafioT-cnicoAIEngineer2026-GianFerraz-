@@ -447,6 +447,11 @@ def run_eval_command(
     verboso: bool = typer.Option(
         False, "--verbose", "-v", help="Mostra a resposta completa de cada caso."
     ),
+    pausa: float = typer.Option(
+        0.0,
+        "--delay",
+        help="Segundos de pausa entre casos. Útil em free tier com limite por minuto.",
+    ),
 ) -> None:
     """Roda o conjunto de avaliação do agente (eval/cases.json)."""
     from emporio.evaluation import load_cases, run_eval, save_report, write_markdown
@@ -457,17 +462,24 @@ def run_eval_command(
     console.print(f"[dim]Rodando {total} caso(s)…[/dim]\n")
 
     def mostrar(resultado) -> None:
+        if not resultado.executado:
+            console.print(
+                f"[yellow]SKIP[/yellow]  {resultado.case_id}  "
+                f"[dim]não executado[/dim]"
+            )
+            console.print(f"       [yellow]· {resultado.erro.splitlines()[0]}[/yellow]")
+            return
         marca = "[green]PASS[/green]" if resultado.passou else "[red]FAIL[/red]"
         ferramentas = ", ".join(resultado.ferramentas_usadas) or "nenhuma"
         console.print(f"{marca}  {resultado.case_id}  [dim]({ferramentas})[/dim]")
         for falha in resultado.falhas:
             console.print(f"       [red]· {falha}[/red]")
-        if resultado.erro:
-            console.print(f"       [red]· {resultado.erro}[/red]")
         if verboso:
             console.print(f"       [dim]{resultado.resposta}[/dim]\n")
 
-    resultado = run_eval(filtro=filtro, service=service, on_result=mostrar)
+    resultado = run_eval(
+        filtro=filtro, service=service, on_result=mostrar, pausa_entre_casos=pausa
+    )
 
     console.print()
     tabela = Table(box=None, title="Resultado por eixo", title_style="dim")
@@ -480,15 +492,25 @@ def run_eval_command(
 
     cor = "green" if resultado.score >= 0.9 else "yellow" if resultado.score >= 0.7 else "red"
     console.print(
-        f"\n[bold {cor}]{resultado.aprovados}/{resultado.total} "
+        f"\n[bold {cor}]{resultado.aprovados}/{resultado.executados} "
         f"({resultado.score * 100:.0f}%)[/bold {cor}]"
+        "  [dim]dos casos executados[/dim]"
     )
+    if resultado.nao_executados:
+        console.print(
+            f"[yellow]{len(resultado.nao_executados)} de {resultado.total} casos "
+            "não executados — fora do score.[/yellow]"
+        )
+        if resultado.interrompido_por:
+            console.print(f"[yellow]{resultado.interrompido_por}[/yellow]")
 
     if report:
         console.print(f"[dim]→ {save_report(resultado)}[/dim]")
         console.print(f"[dim]→ {write_markdown(resultado)}[/dim]")
 
-    if resultado.aprovados < resultado.total:
+    # Sai com erro só por falha de comportamento. Cota esgotada é problema de
+    # infraestrutura e não deve derrubar um pipeline de CI.
+    if resultado.aprovados < resultado.executados:
         raise typer.Exit(code=1)
 
 
@@ -584,6 +606,70 @@ def demo(
         console.print(f"[green]✓[/green] transcrição gravada em {destino}")
     else:
         console.print(texto)
+
+
+@app.command()
+def models() -> None:
+    """Lista os modelos que a sua chave consegue acessar.
+
+    Existe porque é o erro mais chato de diagnosticar neste tipo de projeto:
+    provedores descontinuam versões de modelo para contas novas sem aviso, e a
+    mensagem de 404 sozinha não diz o que usar no lugar.
+    """
+    import httpx
+
+    from emporio.llm.factory import describe_configuration
+
+    config = describe_configuration()
+    provedor = config["provedor"]
+    if provedor != "gemini":
+        console.print(
+            f"[yellow]Listagem implementada só para o Gemini.[/yellow] "
+            f"Provedor atual: {provedor}.\n"
+            "Consulte a documentação do provedor para os nomes de modelo."
+        )
+        raise typer.Exit()
+
+    if not settings.api_key:
+        console.print("[red]GEMINI_API_KEY não configurada no .env.[/red]")
+        raise typer.Exit(code=1)
+
+    try:
+        resposta = httpx.get(
+            "https://generativelanguage.googleapis.com/v1beta/models",
+            headers={"x-goog-api-key": settings.api_key},
+            timeout=30,
+        )
+    except httpx.HTTPError as exc:
+        console.print(f"[red]Falha ao consultar o provedor: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    if resposta.status_code != 200:
+        console.print(f"[red]HTTP {resposta.status_code}[/red]: {resposta.text[:300]}")
+        raise typer.Exit(code=1)
+
+    tabela = Table(box=None)
+    tabela.add_column("modelo", style="bold")
+    tabela.add_column("contexto", justify="right", style="dim")
+    encontrados = 0
+    for item in resposta.json().get("models", []):
+        if "generateContent" not in item.get("supportedGenerationMethods", []):
+            continue
+        nome = item["name"].removeprefix("models/")
+        # Modelos de imagem, áudio e TTS não servem para um agente de texto.
+        if any(t in nome for t in ("image", "tts", "transcribe", "lyria", "banana")):
+            continue
+        marca = " [green]← em uso[/green]" if nome == config["modelo"] else ""
+        tabela.add_row(nome + marca, f"{item.get('inputTokenLimit', 0):,}".replace(",", "."))
+        encontrados += 1
+
+    console.print(
+        Panel(tabela, title=f"{encontrados} modelos de texto disponíveis", border_style="dim")
+    )
+    console.print(
+        "[dim]Defina o escolhido em EMPORIO_LLM_MODEL, no .env. "
+        "Prefira uma variante `flash`: o agente faz várias chamadas por turno.[/dim]"
+    )
 
 
 @app.command()
