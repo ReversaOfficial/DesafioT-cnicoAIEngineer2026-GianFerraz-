@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Segredos — nunca versionar
+.env
+*.key
+
+# Artefatos gerados em runtime (reconstruiveis via `make build`)
+var/
+logs/
+*.sqlite3
+*.db
+
+# Arquivos compactados originais (os CSVs extraidos estao em data/)
+*.rar
+*.zip
+
+# Sistema operacional / editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
