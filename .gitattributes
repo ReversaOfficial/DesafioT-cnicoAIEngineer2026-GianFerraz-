@@ -1,0 +1,8 @@
+# Normaliza fim de linha no repositório (LF), independentemente do SO de quem clona.
+* text=auto eol=lf
+
+# Binários — nunca tocar.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.sqlite3 binary
