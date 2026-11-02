@@ -1,0 +1,13 @@
+# Roteiro: atendimento num domingo à tarde, com a loja fechada.
+# O §7.1 manda informar o horário de retorno — mas o agente deve seguir
+# resolvendo o que consegue agora. Inclui identificação da cliente pelo
+# telefone (§7.2, cumprimentar pelo nome).
+#
+# O último turno virou um teste de LGPD por acidente: eu supus que o pedido 9
+# fosse da mesma cliente (Ana Carolina, telefone abaixo), mas ele pertence a
+# outra pessoa. A verificação do §9 recusou o acesso, que é exatamente o
+# comportamento correto. Mantive o turno no roteiro justamente por isso.
+Oi, boa tarde. Vocês estão abertos?
+Meu telefone é (67) 99654-7821
+Queria saber onde está meu pedido
+É o pedido 9

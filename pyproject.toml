@@ -35,6 +35,12 @@ emporio = "emporio.cli:app"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# Arquivos não-Python lidos em tempo de execução: o schema do banco, as páginas
+# da UI e a identidade visual. Sem isto, uma instalação não-editável sobe sem
+# eles — e a interface carrega com a logo quebrada.
+[tool.setuptools.package-data]
+emporio = ["data/*.sql", "web/*.html", "web/*.png", "web/*.jpg"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
@@ -47,4 +53,8 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
-ignore = ["E501"]
+ignore = [
+    "E501",   # comprimento de linha fica a cargo do formatador
+    "B008",   # `typer.Argument(...)` em default é o idioma da própria Typer
+    "SIM905", # a lista de stopwords é um bloco de texto por legibilidade
+]

@@ -1,0 +1,9 @@
+# Roteiro: o caso não trivial do enunciado.
+# O cliente quer devolver por arrependimento, mas o prazo de 7 dias corridos
+# venceu há meses. Exige verificação de identidade (LGPD, §9), contagem de
+# prazo contra a data de entrega e oferta de alternativa real (§4.2 e §8).
+Oi, me arrependi da compra que fiz e quero devolver
+É o pedido 7
+Letícia Gonçalves Rocha
+Sério? Mas nem usei o ukulele, tá lacradinho na caixa. Não dá pra abrir uma exceção?
+E se ele tiver vindo com algum defeito de fábrica, muda alguma coisa?

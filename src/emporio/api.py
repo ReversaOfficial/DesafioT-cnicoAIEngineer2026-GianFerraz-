@@ -1,0 +1,309 @@
+"""API HTTP e interface web de chat.
+
+A API existe por dois motivos: mostrar que o agente é consumível como serviço
+(o caminho real seria um webhook de WhatsApp) e servir a UI de chat, que é
+onde o atendimento se parece com o que a loja usaria de verdade.
+
+O serviço de agente é único para todo o processo e as sessões são
+identificadas por `session_id` no corpo da requisição — o mesmo histórico
+persistido que a CLI usa, então dá para começar uma conversa no terminal e
+continuar no navegador.
+"""
+
+from __future__ import annotations
+
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
+
+from fastapi import FastAPI, HTTPException, Response
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel, Field
+
+from emporio import __version__
+from emporio.agent.prompts import AGENT_NAME
+from emporio.agent.service import AgentService
+from emporio.config import settings
+from emporio.llm.base import LLMError
+
+WEB_DIR = Path(__file__).parent / "web"
+
+api = FastAPI(
+    title="Empório da Música — Agente de Atendimento",
+    version=__version__,
+    description=(
+        "Agente de atendimento ao cliente da Empório da Música. "
+        "Consulta catálogo, pedidos e o manual interno de políticas."
+    ),
+)
+
+
+@lru_cache(maxsize=1)
+def get_service() -> AgentService:
+    """Serviço compartilhado, criado na primeira requisição.
+
+    Lazy de propósito: `uvicorn` deve subir mesmo sem chave de API, para que
+    `/api/health` possa informar o que está faltando em vez de o processo
+    morrer no import.
+    """
+    return AgentService()
+
+
+# ---------------------------------------------------------------------------
+# Modelos
+# ---------------------------------------------------------------------------
+
+
+class ToolRequest(BaseModel):
+    argumentos: dict[str, Any] = Field(
+        default_factory=dict, description="Argumentos da ferramenta, em pares chave/valor."
+    )
+
+
+class ChatRequest(BaseModel):
+    mensagem: str = Field(..., min_length=1, max_length=4000)
+    session_id: str | None = Field(
+        default=None, description="Omita para abrir uma sessão nova."
+    )
+    idioma: str = Field(
+        default="pt",
+        pattern="^(pt|en)$",
+        description="Idioma da resposta ao cliente. Não muda as regras do agente.",
+    )
+    incluir_trace: bool = Field(
+        default=False, description="Inclui as ferramentas consultadas na resposta."
+    )
+
+
+class ToolTrace(BaseModel):
+    ferramenta: str
+    argumentos: dict
+    ok: bool
+    duracao_ms: int
+
+
+class ChatResponse(BaseModel):
+    resposta: str
+    session_id: str
+    iteracoes: int
+    duracao_ms: int
+    tokens: int
+    trace: list[ToolTrace] = []
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+
+@api.get("/api/health")
+def health() -> dict:
+    """Situação do serviço e da configuração — sem expor a chave."""
+    from emporio.data.db import database_exists
+    from emporio.llm.factory import describe_configuration
+
+    config = describe_configuration()
+    pronto = bool(config["chave_configurada"]) and database_exists()
+    return {
+        "status": "ok" if pronto else "configuracao_incompleta",
+        "versao": __version__,
+        "agente": AGENT_NAME,
+        "dados_carregados": database_exists(),
+        "indice_de_politicas": settings.policy_index_path.exists(),
+        "llm": config,
+        "data_de_referencia": settings.now().strftime("%d/%m/%Y %H:%M"),
+    }
+
+
+@api.get("/api/saudacao")
+def saudacao(idioma: str = "pt") -> dict:
+    """Primeira mensagem, no idioma da interface."""
+    from emporio.agent.prompts import saudacao as texto_saudacao
+
+    return {"agente": AGENT_NAME, "mensagem": texto_saudacao(idioma)}
+
+
+@api.get("/api/tools")
+def listar_ferramentas() -> dict:
+    """Ferramentas disponíveis ao agente, com os schemas."""
+    from emporio.tools.registry import TOOLS
+
+    return {
+        "total": len(TOOLS),
+        "ferramentas": [
+            {
+                "nome": tool.name,
+                "descricao": tool.description,
+                "parametros": tool.parameters,
+                "le_dado_pessoal": tool.sensitive,
+            }
+            for tool in TOOLS
+        ],
+    }
+
+
+@api.post("/api/tool/{nome}")
+def executar_ferramenta(nome: str, request: ToolRequest) -> dict:
+    """Executa uma ferramenta determinística, sem passar pelo LLM.
+
+    Espelha o `emporio tool` da CLI e existe pelo mesmo motivo: a camada de
+    regras precisa ser inspecionável por quem avalia. Preço, prazo e política
+    saem daqui sem gastar chamada de modelo e **sem exigir chave de API** — o
+    que também mantém esta parte do serviço de pé quando a cota do provedor
+    esgota.
+
+    As ferramentas que leem dado pessoal continuam exigindo confirmação de
+    identidade (§9): expor o endpoint não afrouxa a regra, porque a regra está
+    dentro da ferramenta, não na camada de transporte.
+    """
+    from emporio.agent.loop import _coerce_arguments
+    from emporio.tools.common import ToolError
+    from emporio.tools.registry import TOOLS, get_tool
+
+    spec = get_tool(nome)
+    if spec is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "erro": f"Ferramenta '{nome}' não existe.",
+                "disponiveis": [t.name for t in TOOLS],
+            },
+        )
+
+    bruto = {k: v for k, v in request.argumentos.items() if v not in (None, "")}
+    aceitos = spec.parameters.get("properties", {})
+    faltando = [c for c in spec.parameters.get("required", []) if c not in bruto]
+    if faltando:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "erro": "Faltam argumentos obrigatórios.",
+                "faltando": faltando,
+                "aceita": list(aceitos),
+            },
+        )
+
+    try:
+        resultado = spec.handler(**_coerce_arguments(spec, bruto))
+    except ToolError as exc:
+        # Erro de ferramenta é resposta de negócio, não falha de transporte:
+        # "pedido não encontrado" é informação, e o 200 preserva o payload que
+        # o agente receberia no mesmo caso.
+        resultado = exc.to_dict()
+    return {
+        "ferramenta": spec.name,
+        "argumentos": bruto,
+        "le_dado_pessoal": spec.sensitive,
+        "resultado": resultado,
+    }
+
+
+@api.post("/api/chat", response_model=ChatResponse)
+def chat(request: ChatRequest) -> ChatResponse:
+    """Envia uma mensagem ao agente e devolve a resposta."""
+    try:
+        service = get_service()
+    except LLMError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    session_id = service.open_session(request.session_id, channel="web")
+    try:
+        turn = service.send(session_id, request.mensagem, idioma=request.idioma)
+    except LLMError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return ChatResponse(
+        resposta=turn.reply,
+        session_id=session_id,
+        iteracoes=turn.iterations,
+        duracao_ms=turn.duration_ms,
+        tokens=turn.usage.total,
+        trace=[
+            ToolTrace(
+                ferramenta=inv.name,
+                argumentos=inv.arguments,
+                ok=inv.ok,
+                duracao_ms=inv.duration_ms,
+            )
+            for inv in turn.tool_invocations
+        ]
+        if request.incluir_trace
+        else [],
+    )
+
+
+@api.get("/api/session/{session_id}")
+def historico(session_id: str) -> dict:
+    """Transcrição de uma sessão.
+
+    Lê direto do armazenamento, sem passar pelo serviço de agente: consultar
+    histórico não deveria exigir um LLM configurado.
+    """
+    from emporio.memory.store import ConversationStore
+
+    mensagens = ConversationStore().transcript(session_id)
+    if not mensagens:
+        raise HTTPException(status_code=404, detail="Sessão sem mensagens ou inexistente.")
+    return {"session_id": session_id, "mensagens": mensagens}
+
+
+# ---------------------------------------------------------------------------
+# UI
+# ---------------------------------------------------------------------------
+
+
+# `response_model=None`: o retorno é um Response pronto, não um modelo a
+# serializar — sem isso o FastAPI tenta derivar schema da união de tipos.
+# Lista explícita em vez de servir o diretório inteiro: o nome vem da URL, e
+# uma allowlist elimina a classe de bug de travessia de caminho sem depender de
+# sanitização. São poucos arquivos e eles mudam junto com a interface.
+ASSETS: dict[str, str] = {
+    "logo.png": "image/png",
+    "favicon.png": "image/png",
+    "apple-touch-icon.png": "image/png",
+    "og.jpg": "image/jpeg",
+}
+
+
+@api.get("/assets/{nome}", response_model=None, include_in_schema=False)
+def asset(nome: str) -> Response:
+    """Identidade visual da loja: logo, ícones e a imagem de compartilhamento."""
+    tipo = ASSETS.get(nome)
+    if tipo is None:
+        return JSONResponse({"erro": "Arquivo não encontrado."}, status_code=404)
+    caminho = WEB_DIR / nome
+    if not caminho.exists():  # pragma: no cover
+        return JSONResponse({"erro": "Arquivo não encontrado."}, status_code=404)
+    # Imagem estática versionada com o código: cache longo é seguro porque um
+    # deploy novo serve de um caminho novo.
+    return FileResponse(
+        caminho, media_type=tipo, headers={"Cache-Control": "public, max-age=86400"}
+    )
+
+
+@api.get("/favicon.ico", response_model=None, include_in_schema=False)
+def favicon() -> Response:
+    """Navegadores pedem /favicon.ico mesmo com o <link> declarado no HTML."""
+    return asset("favicon.png")
+
+
+def _servir(nome: str) -> Response:
+    page = WEB_DIR / nome
+    if not page.exists():  # pragma: no cover
+        return JSONResponse({"erro": "Interface web não encontrada."}, status_code=404)
+    return FileResponse(page, media_type="text/html")
+
+
+@api.get("/", response_model=None, include_in_schema=False)
+def index() -> Response:
+    return _servir("index.html")
+
+
+@api.get("/ferramentas", response_model=None, include_in_schema=False)
+def explorador() -> Response:
+    """Explorador da camada determinística.
+
+    Página separada do chat de propósito: ela funciona sem chave de API e sem
+    cota, então continua de pé quando o provedor de LLM não responde.
+    """
+    return _servir("ferramentas.html")

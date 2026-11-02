@@ -28,7 +28,14 @@ STORE_TIMEZONE = ZoneInfo("America/Campo_Grande")
 # Defaults de modelo por provedor. Centralizados para que o `.env` possa ficar
 # com EMPORIO_LLM_MODEL vazio e ainda assim funcionar.
 DEFAULT_MODELS: dict[str, str] = {
-    "gemini": "gemini-2.5-flash",
+    # Pinado de propósito, para que o comportamento seja reproduzível.
+    #
+    # Escolhido empiricamente: o Google descontinua versões para contas novas
+    # sem aviso (a 2.5-flash retorna 404 em chave nova) e os modelos mais
+    # recentes vivem saturados (a 3.8-flash devolveu 503 "high demand" em três
+    # tentativas). A 3.5-flash é estável, atende em ~2,5s e tem function
+    # calling confiável. `emporio models` lista o que a sua chave acessa.
+    "gemini": "gemini-3.5-flash",
     "openai": "gpt-4o-mini",
     "anthropic": "claude-sonnet-4-5",
     "groq": "llama-3.3-70b-versatile",
@@ -37,6 +44,26 @@ DEFAULT_MODELS: dict[str, str] = {
 }
 
 # Variável de ambiente que carrega a chave de cada provedor.
+# Cadeia de reserva por provedor.
+#
+# O nível gratuito do Gemini concede ~20 requisições por dia POR MODELO, e um
+# agente faz 2 a 3 chamadas por turno — ou seja, uma conversa de oito mensagens
+# esgota a cota de um modelo. Como cada modelo tem a sua própria cota, trocar
+# de modelo ao receber 429 mantém o atendimento de pé.
+#
+# A ordem é por capacidade decrescente: só desce para um modelo mais simples
+# quando o melhor já não responde. A troca é registrada e aparece em
+# `emporio doctor`, nunca acontece em silêncio.
+FALLBACK_MODELS: dict[str, tuple[str, ...]] = {
+    "gemini": (
+        "gemini-3-flash-preview",
+        "gemini-3.6-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-3.5-flash-lite",
+        "gemini-flash-lite-latest",
+    ),
+}
+
 API_KEY_ENV: dict[str, str] = {
     "gemini": "GEMINI_API_KEY",
     "openai": "OPENAI_API_KEY",
@@ -45,6 +72,12 @@ API_KEY_ENV: dict[str, str] = {
     "openrouter": "OPENROUTER_API_KEY",
     "ollama": "",  # roda local, não exige chave
 }
+
+
+def _env_path(nome: str, default: Path) -> Path:
+    """Caminho vindo do ambiente, expandindo `~`, com default do repositório."""
+    raw = (os.getenv(nome) or "").strip()
+    return Path(raw).expanduser() if raw else default
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -87,8 +120,14 @@ class Settings:
     # --- Caminhos ----------------------------------------------------------
     root_dir: Path = ROOT_DIR
     data_dir: Path = ROOT_DIR / "data"
-    var_dir: Path = ROOT_DIR / "var"
-    logs_dir: Path = ROOT_DIR / "logs"
+    # Derivados (banco, índice, conversas) e log ficam fora da árvore do código
+    # quando `EMPORIO_VAR_DIR` / `EMPORIO_LOGS_DIR` apontam para outro lugar.
+    # Existe porque em hospedagem serverless o disco do pacote é somente-leitura
+    # e só `/tmp` aceita escrita: sem isto o processo morre ao criar o diretório.
+    var_dir: Path = field(default_factory=lambda: _env_path("EMPORIO_VAR_DIR", ROOT_DIR / "var"))
+    logs_dir: Path = field(
+        default_factory=lambda: _env_path("EMPORIO_LOGS_DIR", ROOT_DIR / "logs")
+    )
 
     # --- Observabilidade ---------------------------------------------------
     log_turns: bool = field(default_factory=lambda: _env_flag("EMPORIO_LOG_TURNS", True))
@@ -119,6 +158,21 @@ class Settings:
         return self.model or DEFAULT_MODELS.get(self.provider, "")
 
     @property
+    def fallback_models(self) -> tuple[str, ...]:
+        """Modelos de reserva, sem repetir o principal.
+
+        Desativável com `EMPORIO_LLM_FALLBACK=0` para quem quiser garantia de
+        que uma única versão de modelo atendeu a conversa inteira — é o que se
+        quer ao medir, e o que o eval usa.
+        """
+        if not _env_flag("EMPORIO_LLM_FALLBACK", True):
+            return ()
+        principal = self.resolved_model
+        return tuple(
+            m for m in FALLBACK_MODELS.get(self.provider, ()) if m != principal
+        )
+
+    @property
     def api_key(self) -> str:
         env_name = API_KEY_ENV.get(self.provider, "")
         return (os.getenv(env_name) or "").strip() if env_name else ""
@@ -133,8 +187,12 @@ class Settings:
         repositório precisam ser reproduzíveis, e as regras de prazo (7 dias de
         arrependimento, 30 de troca, 90 de garantia) só podem ser testadas de
         forma confiável com o tempo controlado.
+
+        A variável é lida a cada chamada, não no construtor, para que um teste
+        possa congelar a data com `monkeypatch.setenv` sem recriar o objeto de
+        configuração inteiro.
         """
-        raw = self.now_override
+        raw = (os.getenv("EMPORIO_NOW") or self.now_override).strip()
         if raw:
             for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
                 try:
