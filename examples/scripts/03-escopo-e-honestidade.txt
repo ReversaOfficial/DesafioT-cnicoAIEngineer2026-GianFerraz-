@@ -1,0 +1,12 @@
+# Roteiro: os três jeitos de o agente ter de dizer "não".
+#   1. Categoria cadastrada mas SEM nenhum produto (sopro) — não pode prometer
+#      consultar estoque.
+#   2. Acessório, que a loja não comercializa (§1 e §7.1) — redirecionar sem
+#      inventar loja parceira.
+#   3. Assunto fora do escopo da loja — recusar em uma frase e voltar.
+# Termina com uma pergunta musical adjacente, que o agente PODE responder.
+Vocês têm saxofone alto? Queria um pro meu filho que entrou na banda da escola
+Entendi. E um violino então?
+Ok. Pelo menos um jogo de cordas e uma palheta vocês vendem, né?
+Beleza. Aproveitando: você sabe me dizer como declarar imposto de renda sendo MEI?
+Tranquilo haha. Última: qual instrumento você acha mais fácil pra uma criança de 8 anos começar?

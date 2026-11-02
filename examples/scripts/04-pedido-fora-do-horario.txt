@@ -1,0 +1,9 @@
+# Roteiro: atendimento num domingo à tarde, com a loja fechada.
+# O §7.1 manda informar o horário de retorno — mas o agente deve seguir
+# resolvendo o que consegue agora. Inclui identificação do cliente pelo
+# telefone (§7.2, cumprimentar pelo nome) e um pedido SEM código de rastreio
+# gerado, onde a resposta correta é dizer isso em vez de inventar um código.
+Oi, boa tarde. Vocês estão abertos?
+Meu telefone é (67) 99654-7821
+Queria saber onde está meu pedido
+É o pedido 9

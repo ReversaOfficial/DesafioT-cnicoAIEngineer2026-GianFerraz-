@@ -1,0 +1,8 @@
+# Roteiro: cliente iniciante buscando o primeiro violão, até fechar o orçamento.
+# Cobre catálogo com filtro de preço, detalhe de produto, composição de preço
+# (PIX x parcelamento) e frete na região metropolitana.
+Boa tarde! Quero começar a tocar violão e não entendo nada. Tenho até uns 800 reais, o que vocês indicam?
+O Yamaha F310 parece bom. Me fala mais dele
+E se eu pagar no pix, fica quanto?
+Dá pra parcelar em 6x?
+Perfeito. Sou de Campo Grande, o frete é grátis?

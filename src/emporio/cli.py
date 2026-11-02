@@ -9,7 +9,9 @@ resposta — é a diferença entre acreditar e verificar.
 from __future__ import annotations
 
 import json
+import os
 import sys
+from pathlib import Path
 
 import typer
 from rich.console import Console
@@ -432,6 +434,156 @@ def doctor() -> None:
             "  [bold]emporio tool buscar_produtos termo=violao[/bold]   consulta direta"
         )
         raise typer.Exit(code=1)
+
+
+@app.command("eval")
+def run_eval_command(
+    filtro: str = typer.Option(
+        "", "--filter", "-f", help="Roda só os casos cujo id ou eixo casar com o texto."
+    ),
+    report: bool = typer.Option(
+        False, "--report", help="Grava docs/EVALUATION.md e var/eval_report.json."
+    ),
+    verboso: bool = typer.Option(
+        False, "--verbose", "-v", help="Mostra a resposta completa de cada caso."
+    ),
+) -> None:
+    """Roda o conjunto de avaliação do agente (eval/cases.json)."""
+    from emporio.evaluation import load_cases, run_eval, save_report, write_markdown
+
+    service = _build_service()
+    casos = load_cases()
+    total = len([c for c in casos if not filtro or filtro in c["id"] or filtro == c.get("eixo")])
+    console.print(f"[dim]Rodando {total} caso(s)…[/dim]\n")
+
+    def mostrar(resultado) -> None:
+        marca = "[green]PASS[/green]" if resultado.passou else "[red]FAIL[/red]"
+        ferramentas = ", ".join(resultado.ferramentas_usadas) or "nenhuma"
+        console.print(f"{marca}  {resultado.case_id}  [dim]({ferramentas})[/dim]")
+        for falha in resultado.falhas:
+            console.print(f"       [red]· {falha}[/red]")
+        if resultado.erro:
+            console.print(f"       [red]· {resultado.erro}[/red]")
+        if verboso:
+            console.print(f"       [dim]{resultado.resposta}[/dim]\n")
+
+    resultado = run_eval(filtro=filtro, service=service, on_result=mostrar)
+
+    console.print()
+    tabela = Table(box=None, title="Resultado por eixo", title_style="dim")
+    tabela.add_column("eixo", style="bold")
+    tabela.add_column("aprovados", justify="right")
+    for eixo, (ok, qtd) in sorted(resultado.por_eixo().items()):
+        estilo = "green" if ok == qtd else "yellow" if ok else "red"
+        tabela.add_row(eixo, f"[{estilo}]{ok}/{qtd}[/{estilo}]")
+    console.print(tabela)
+
+    cor = "green" if resultado.score >= 0.9 else "yellow" if resultado.score >= 0.7 else "red"
+    console.print(
+        f"\n[bold {cor}]{resultado.aprovados}/{resultado.total} "
+        f"({resultado.score * 100:.0f}%)[/bold {cor}]"
+    )
+
+    if report:
+        console.print(f"[dim]→ {save_report(resultado)}[/dim]")
+        console.print(f"[dim]→ {write_markdown(resultado)}[/dim]")
+
+    if resultado.aprovados < resultado.total:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def demo(
+    roteiro: str = typer.Option(
+        "", "--script", help="Arquivo .txt com uma mensagem do cliente por linha."
+    ),
+    saida: str = typer.Option(
+        "", "--out", "-o", help="Arquivo .md onde gravar a transcrição."
+    ),
+    data: str = typer.Option(
+        "", "--date", help="Congela a data de referência (ex.: 2026-03-20T10:30)."
+    ),
+    titulo: str = typer.Option("Conversa de exemplo", "--title"),
+    contexto: str = typer.Option(
+        "", "--context", help="Parágrafo de contexto incluído no topo da transcrição."
+    ),
+) -> None:
+    """Roda um roteiro de mensagens e grava a transcrição em Markdown.
+
+    É assim que os exemplos em `examples/` são gerados: conversas reais com o
+    agente, registradas com as consultas que ele fez em cada turno, em vez de
+    diálogos escritos à mão.
+    """
+    if data:
+        os.environ["EMPORIO_NOW"] = data
+
+    if roteiro:
+        linhas = [
+            linha.strip()
+            for linha in Path(roteiro).read_text(encoding="utf-8").splitlines()
+            if linha.strip() and not linha.startswith("#")
+        ]
+    else:
+        console.print("[red]Informe --script com o roteiro de mensagens.[/red]")
+        raise typer.Exit(code=1)
+
+    service = _build_service()
+    session_id = service.open_session(None, channel="demo")
+    config = service.configuration()
+
+    partes: list[str] = [
+        f"# {titulo}",
+        "",
+        f"> Transcrição real gerada por `emporio demo`. "
+        f"Modelo: `{config['provedor']}/{config['modelo']}`. "
+        f"Data de referência do sistema: **{config['data_de_referencia']}**.",
+        "",
+    ]
+    if contexto:
+        partes += [f"**Cenário.** {contexto}", ""]
+    partes += ["---", ""]
+
+    for mensagem in linhas:
+        console.print(f"[{CLIENTE_COR}]Você:[/] {mensagem}")
+        with console.status("[dim]consultando…[/dim]", spinner="dots"):
+            turn = service.send(session_id, mensagem)
+        console.print(Text(f"{AGENT_NAME}:", style=AGENTE_COR), end=" ")
+        console.print(turn.reply)
+        _print_trace(turn)
+        console.print()
+
+        partes += [f"**Cliente:** {mensagem}", ""]
+        if turn.tool_invocations:
+            consultas = "  \n".join(
+                f"`{inv.summary()}`" + ("" if inv.ok else "  ← erro")
+                for inv in turn.tool_invocations
+            )
+            partes += [
+                "<details><summary>consultas feitas pelo agente</summary>",
+                "",
+                consultas,
+                "",
+                "</details>",
+                "",
+            ]
+        partes += [f"**{AGENT_NAME}:** {turn.reply}", "", "---", ""]
+
+    partes += [
+        "",
+        f"<sub>Sessão `{session_id}`. "
+        "As consultas listadas são as chamadas de ferramenta efetivamente "
+        "executadas em cada turno, capturadas durante a conversa.</sub>",
+        "",
+    ]
+
+    texto = "\n".join(partes)
+    if saida:
+        destino = Path(saida)
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_text(texto, encoding="utf-8")
+        console.print(f"[green]✓[/green] transcrição gravada em {destino}")
+    else:
+        console.print(texto)
 
 
 @app.command()
