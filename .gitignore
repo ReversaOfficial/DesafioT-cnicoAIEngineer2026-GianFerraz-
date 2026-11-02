@@ -36,3 +36,9 @@ logs/
 Thumbs.db
 .idea/
 .vscode/
+
+# PDF de submissao, gerado a partir do README e dos docs/.
+# Artefato de entrega, nao do repositorio.
+*.pdf
+!data/*.pdf
+!docs/desafio_tecnico_ai_eng_artefact.pdf
