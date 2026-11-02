@@ -20,6 +20,13 @@ Cliente ──▶ Téo (LLM) ──▶ decide: é dado ou é política?
 > usabilidade — o próprio manual da loja (§7.1) chama isso de risco de
 > propaganda enganosa.
 
+![Interface web do agente, mostrando a consulta de ferramenta que embasou a resposta](docs/img/interface-web.jpg)
+
+<sub>A interface web com o botão **consultas** ligado: a faixa âmbar mostra a
+chamada de ferramenta que embasou a resposta — aqui o agente recusou uma
+devolução fora do prazo citando o §4.1 do manual, depois de verificar a
+identidade da cliente.</sub>
+
 ---
 
 ## Sumário
@@ -75,8 +82,22 @@ GEMINI_API_KEY=sua_chave_aqui
 ```
 
 > Pegue a chave em **<https://aistudio.google.com/apikey>** → *Create API key*.
-> Leva menos de um minuto e o nível gratuito é suficiente para a avaliação
-> inteira.
+> Leva menos de um minuto e não pede cartão de crédito.
+
+**Sobre a cota do nível gratuito.** Medindo em uso real, o nível gratuito do
+Gemini concede **~20 requisições por dia por modelo**, e o agente faz 2 a 3
+chamadas por turno — ou seja, uma conversa de oito mensagens esgota a cota de
+um modelo. Como cada modelo tem a sua própria cota, o cliente Gemini **troca
+automaticamente de modelo** ao receber `429`, descendo uma cadeia de reserva
+definida em [`config.py`](src/emporio/config.py). A troca é sempre avisada no
+terminal e registrada na transcrição — nunca acontece em silêncio.
+
+Em uso real a escolha seria outra: uma conta paga (o custo por atendimento num
+modelo *flash* é da ordem de centavos) ou um provedor com nível gratuito mais
+largo, como o Groq. A cadeia de reserva existe porque este é um projeto de
+avaliação, que precisa funcionar na chave gratuita de quem clonar o
+repositório. Desligue com `EMPORIO_LLM_FALLBACK=0` se quiser garantir que uma
+única versão de modelo atendeu a conversa inteira.
 
 Outros provedores funcionam trocando duas linhas — veja
 [Modelo e provedor](#2-modelo-e-provedor).
@@ -127,6 +148,7 @@ python -m emporio.cli doctor
 | `eval` | Roda o conjunto de avaliação do agente |
 | `demo --script ...` | Roda um roteiro e grava a transcrição em Markdown |
 | `sessions` | Sessões gravadas e estatística de uso de ferramentas |
+| `models` | Lista os modelos que a sua chave realmente acessa |
 | `doctor` | Diagnóstico do ambiente |
 
 Se você tem `make`: `make install`, `make build`, `make chat`, `make test`,
@@ -138,7 +160,7 @@ A camada determinística — que é onde vivem as regras de negócio — não de
 de LLM nenhum:
 
 ```bash
-pytest                                                   # 271 testes
+pytest                                                   # 308 testes
 python -m emporio.cli tool buscar_produtos categoria=Violões preco_max=1000
 python -m emporio.cli tool calcular_preco product_id=127 forma_pagamento=10x
 ```
@@ -276,11 +298,25 @@ código, não do modelo:
 
 ### 2. Modelo e provedor
 
-**Default: Google Gemini (`gemini-2.5-flash`).** Critério decisivo: a chave do
+**Default: Google Gemini (`gemini-3.5-flash`).** Critério decisivo: a chave do
 AI Studio é gratuita e não exige cartão. Um projeto que precisa ser avaliado
-por outra pessoa não pode ter um paywall na porta. O modelo também é rápido o
+por outra pessoa não pode ter um paywall na porta. O modelo é rápido o
 suficiente para um atendimento que o manual limita a 5 minutos de resposta
 (§7.1) e tem function calling nativo confiável.
+
+O modelo específico foi escolhido **empiricamente, não pela documentação**, e
+isso rendeu três aprendizados que estão no código:
+
+1. `gemini-2.5-flash` responde `404 "no longer available to new users"` em
+   chave nova — a documentação não avisa. Por isso existe o comando
+   **`emporio models`**, que lista o que a sua chave realmente acessa.
+2. As versões mais recentes vivem saturadas: `gemini-3.8-flash` devolveu
+   `503 "high demand"` em três tentativas seguidas.
+3. Os modelos Gemini 3.x exigem que o `thoughtSignature` recebido junto da
+   chamada de função **volte com ela** na requisição seguinte, ou a API
+   responde `400`. Isso não aparece em nenhum exemplo básico de function
+   calling e levou a um campo `metadata` no `ToolCall`, que também é
+   persistido — sem ele, uma sessão retomada do histórico seria rejeitada.
 
 **Provider-agnóstico de verdade.** A camada LLM é uma interface
 (`Message` / `ToolCall` / `LLMResponse`) com três adaptadores:
@@ -489,8 +525,8 @@ Duas camadas de verificação, com propósitos diferentes.
 ### Testes automatizados — a camada determinística
 
 ```bash
-pytest                                      # 271 testes, ~15s
-pytest --cov=emporio --cov-report=term      # cobertura: 83%
+pytest                                      # 308 testes, ~12s
+pytest --cov=emporio --cov-report=term      # cobertura: 80%
 ```
 
 Nenhum teste precisa de rede ou de chave de API, e todos rodam contra os
@@ -516,7 +552,7 @@ cenário idealizado que nunca pega o bug real. Destaques:
 python -m emporio.cli eval --report
 ```
 
-O conjunto dourado em [`eval/cases.json`](eval/cases.json) tem **20 casos** e
+O conjunto dourado em [`eval/cases.json`](eval/cases.json) tem **21 casos** e
 mede três coisas que falham por motivos diferentes: **disciplina de consulta**
 (chamou ferramenta antes de afirmar?), **roteamento** (chamou a ferramenta
 certa?) e **conteúdo**.
@@ -530,9 +566,40 @@ inteira: o agente tem liberdade de redação, não de fato.
 
 Casos cujo resultado depende do tempo carregam a própria data de referência, de
 modo que o score não muda conforme o dia da execução. O comando sai com código
-1 se algum caso reprovar, servindo direto como *gate* de CI.
+1 se algum caso reprovar, servindo direto como *gate* de CI — mas **não** por
+cota esgotada, que é falha de infraestrutura.
 
-Resultado da última execução: [`docs/EVALUATION.md`](docs/EVALUATION.md).
+O relatório da última execução fica em
+[`docs/EVALUATION.md`](docs/EVALUATION.md), gerado pelo próprio comando.
+
+**O que a avaliação encontrou, e o que isso mudou.** Na primeira execução
+completa o score foi **16/20**. Investigando os quatro reprovados, **nenhum era
+erro do agente**:
+
+- **Três eram falhas do meu próprio teste.** O caso do horário exigia uma
+  chamada de ferramenta para algo que o prompt do sistema já injeta a cada
+  turno — a resposta estava certa e o teste é que estava errado. Dois outros
+  casavam frase literal demais: o agente escreveu "a gente está sem ele em
+  estoque" e "não temos nenhuma promoção de Black Friday ativa", que dizem
+  exatamente o que se pedia, mas não batiam com as cadeias que eu tinha
+  listado.
+- **Um expôs uma premissa falsa minha.** Eu havia escrito um caso afirmando
+  que Fender não estava no catálogo e reprovando o agente por citar um preço.
+  A consulta mostrou que a **Fender Stratocaster American Pro II existe**
+  (produto 145, R$ 12.500,00) e que o valor citado estava correto. Esse caso
+  foi reescrito.
+- **E esse mesmo caso virou uma melhoria real na ferramenta.** Investigando,
+  descobri que `buscar_produtos` com `AND` de todos os termos retorna vazio
+  para "Fender Stratocaster American Professional", porque o termo
+  `professional` derruba a consulta inteira — deixando o agente sem o
+  equivalente que o §7.3 manda oferecer. A busca agora, **e apenas quando o
+  resultado vem vazio**, pontua os produtos pelo número de termos que casam e
+  devolve os mais próximos em `produtos_parecidos`. É o que um atendente
+  humano faria: reconhecer a marca e mostrar o que a loja tem.
+
+Esse ciclo é, para mim, o ponto principal de ter um harness de avaliação. Ele
+não serviu para exibir um número bonito: serviu para encontrar três testes
+errados, uma suposição minha não verificada e um buraco real na busca.
 
 ---
 
@@ -596,7 +663,18 @@ Sendo direto sobre o que não está resolvido:
    latência.
 10. **O eval depende do modelo.** O score varia com provedor e versão de
     modelo. É esperado — é uma medida do sistema completo, não de regressão de
-    código. Para isso existem os 271 testes determinísticos.
+    código. Para isso existem os 308 testes determinísticos.
+11. **A cota gratuita limita a execução, e isso aparece nos artefatos.** Com
+    ~20 requisições por dia por modelo, uma execução completa do eval (20 casos
+    × 2-3 chamadas) não cabe na cota de um único modelo. O harness trata isso
+    de frente: distingue *caso reprovado* de *caso não executado* e calcula o
+    score só sobre o que rodou, porque um relatório que conta falha de cota
+    como falha de comportamento mede o dia, não o agente. Algumas das
+    transcrições em `examples/` registram no rodapé a troca de modelo que
+    ocorreu no meio da conversa. **Num cenário real isto não existiria:** com
+    conta paga, a conversa inteira roda numa única versão de modelo e o eval
+    completo custa centavos. A escolha por nível gratuito aqui é deliberada,
+    para que o projeto seja executável por quem for avaliá-lo sem custo.
 
 ---
 
@@ -718,7 +796,7 @@ contradiz. É nessa segunda parte que está o projeto.
 │   ├── 0X-*.md                   transcrições geradas por `emporio demo`
 │   └── scripts/                  roteiros que as produzem
 │
-├── eval/cases.json               conjunto dourado de avaliação (20 casos)
+├── eval/cases.json               conjunto dourado de avaliação (21 casos)
 │
 ├── scripts/gerar_exemplos.py     regenera as transcrições
 │
@@ -736,7 +814,7 @@ contradiz. É nessa segunda parte que está o projeto.
 │   ├── agent/                    persona, prompt e laço ReAct
 │   └── memory/                   persistência de conversa
 │
-└── tests/                        271 testes, sem rede e sem chave de API
+└── tests/                        308 testes, sem rede e sem chave de API
 ```
 
 ---

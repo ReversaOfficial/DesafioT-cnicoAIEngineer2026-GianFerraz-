@@ -2,7 +2,7 @@
 
 > Arquivo **gerado automaticamente** por `emporio build` (`src/emporio/data/loader.py`). Não editar à mão.
 
-Gerado em: 2026-11-02 09:29:44 -0300
+Gerado em: 2026-11-02 11:28:18 -0300
 
 ## Volumetria carregada
 

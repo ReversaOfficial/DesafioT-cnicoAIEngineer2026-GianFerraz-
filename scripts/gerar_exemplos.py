@@ -59,12 +59,15 @@ EXEMPLOS: list[tuple[str, str, str, str, str]] = [
         "04-pedido-fora-do-horario.txt",
         "04-pedido-fora-do-horario.md",
         "2026-03-22T15:40",
-        "Domingo à tarde, loja fechada, pedido sem rastreio",
+        "Domingo à tarde, loja fechada, e a LGPD barrando acesso cruzado",
         "Atendimento fora do expediente num domingo. O §7.1 manda informar "
-        "quando a equipe retorna, mas o agente segue resolvendo o que consegue. "
-        "Identifica o cliente pelo telefone para tratá-lo pelo nome (§7.2) e "
-        "encontra um pedido que **ainda não tem código de rastreio gerado** — "
-        "caso em que a resposta certa é dizer isso, não inventar um código.",
+        "quando a equipe retorna, mas o agente segue resolvendo o que "
+        "consegue. Identifica a cliente pelo telefone para tratá-la pelo nome "
+        "(§7.2) e consulta o pedido dela. No último turno a cliente pede um "
+        "pedido que **não é dela** — e a verificação de identidade do §9 "
+        "recusa, sem vazar nada do titular real. Esse turno não estava "
+        "planejado no roteiro: eu supus que o pedido 9 fosse da mesma cliente, "
+        "e a proteção de dados mostrou que não era.",
     ),
     (
         "05-promocao-vencida.txt",
