@@ -35,10 +35,11 @@ emporio = "emporio.cli:app"
 [tool.setuptools.packages.find]
 where = ["src"]
 
-# Arquivos não-Python lidos em tempo de execução: o schema do banco e a página
-# da UI web. Sem isto, uma instalação não-editável sobe sem eles.
+# Arquivos não-Python lidos em tempo de execução: o schema do banco, as páginas
+# da UI e a identidade visual. Sem isto, uma instalação não-editável sobe sem
+# eles — e a interface carrega com a logo quebrada.
 [tool.setuptools.package-data]
-emporio = ["data/*.sql", "web/*.html"]
+emporio = ["data/*.sql", "web/*.html", "web/*.png", "web/*.jpg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

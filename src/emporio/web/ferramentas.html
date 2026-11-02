@@ -4,6 +4,21 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Camada determinística — Empório da Música</title>
+<link rel="icon" type="image/png" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<meta name="theme-color" content="#11100e">
+<meta name="description" content="As 11 ferramentas do agente executadas sobre os dados reais da loja, sem LLM: preço, parcelamento, frete, devolução e políticas com citação de seção.">
+<!-- Compartilhamento: a URL da imagem precisa ser absoluta para os
+     raspadores de link (WhatsApp, LinkedIn, Slack) conseguirem buscá-la. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Empório da Música">
+<meta property="og:title" content="Camada determinística — Empório da Música">
+<meta property="og:description" content="As 11 ferramentas do agente executadas sobre os dados reais da loja, sem LLM: preço, parcelamento, frete, devolução e políticas com citação de seção.">
+<meta property="og:image" content="https://emporio-da-musica-six.vercel.app/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="628">
+<meta property="og:url" content="https://emporio-da-musica-six.vercel.app/ferramentas">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   :root {
     --bg: #11100e;
@@ -33,6 +48,8 @@
     padding: 18px 16px;
   }
   .wrap { max-width: 1060px; margin: 0 auto; }
+  .marca { display: flex; align-items: center; gap: 14px; }
+  .marca img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
   h1 { font-size: 1.15rem; margin: 0 0 4px; }
   .sub { color: var(--muted); font-size: .9rem; margin: 0; }
   .nav { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
@@ -107,8 +124,13 @@
 <body>
 <header>
   <div class="wrap">
-    <h1>Camada determinística</h1>
-    <p class="sub">As 11 ferramentas do agente, executadas direto sobre os dados reais da loja — sem LLM no caminho.</p>
+    <div class="marca">
+      <img src="/assets/logo.png" alt="Logotipo da Empório da Música" width="48" height="48">
+      <div>
+        <h1>Camada determinística</h1>
+        <p class="sub">As 11 ferramentas do agente, executadas direto sobre os dados reais da loja — sem LLM no caminho.</p>
+      </div>
+    </div>
     <nav class="nav">
       <a href="/">← Conversar com o Téo</a>
       <a href="/ferramentas" class="on">Ferramentas</a>

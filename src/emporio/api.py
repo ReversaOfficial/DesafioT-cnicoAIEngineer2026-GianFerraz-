@@ -246,6 +246,39 @@ def historico(session_id: str) -> dict:
 
 # `response_model=None`: o retorno é um Response pronto, não um modelo a
 # serializar — sem isso o FastAPI tenta derivar schema da união de tipos.
+# Lista explícita em vez de servir o diretório inteiro: o nome vem da URL, e
+# uma allowlist elimina a classe de bug de travessia de caminho sem depender de
+# sanitização. São poucos arquivos e eles mudam junto com a interface.
+ASSETS: dict[str, str] = {
+    "logo.png": "image/png",
+    "favicon.png": "image/png",
+    "apple-touch-icon.png": "image/png",
+    "og.jpg": "image/jpeg",
+}
+
+
+@api.get("/assets/{nome}", response_model=None, include_in_schema=False)
+def asset(nome: str) -> Response:
+    """Identidade visual da loja: logo, ícones e a imagem de compartilhamento."""
+    tipo = ASSETS.get(nome)
+    if tipo is None:
+        return JSONResponse({"erro": "Arquivo não encontrado."}, status_code=404)
+    caminho = WEB_DIR / nome
+    if not caminho.exists():  # pragma: no cover
+        return JSONResponse({"erro": "Arquivo não encontrado."}, status_code=404)
+    # Imagem estática versionada com o código: cache longo é seguro porque um
+    # deploy novo serve de um caminho novo.
+    return FileResponse(
+        caminho, media_type=tipo, headers={"Cache-Control": "public, max-age=86400"}
+    )
+
+
+@api.get("/favicon.ico", response_model=None, include_in_schema=False)
+def favicon() -> Response:
+    """Navegadores pedem /favicon.ico mesmo com o <link> declarado no HTML."""
+    return asset("favicon.png")
+
+
 def _servir(nome: str) -> Response:
     page = WEB_DIR / nome
     if not page.exists():  # pragma: no cover

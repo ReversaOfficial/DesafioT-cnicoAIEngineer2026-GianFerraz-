@@ -297,3 +297,43 @@ class TestExecucaoDeFerramentaPelaAPI:
         resposta = self.client.get("/ferramentas")
         assert resposta.status_code == 200
         assert "text/html" in resposta.headers["content-type"]
+
+
+class TestIdentidadeVisual:
+    """Logo, ícones e metadados de compartilhamento.
+
+    A allowlist de `ASSETS` é o ponto sensível: o nome do arquivo vem da URL,
+    então o teste confirma que um caminho fora da lista não é servido.
+    """
+
+    def setup_method(self):
+        self.client = TestClient(api)
+
+    def test_serve_cada_asset_declarado(self):
+        from emporio.api import ASSETS
+
+        for nome, tipo in ASSETS.items():
+            resposta = self.client.get(f"/assets/{nome}")
+            assert resposta.status_code == 200, nome
+            assert resposta.headers["content-type"] == tipo, nome
+            assert len(resposta.content) > 0, nome
+
+    def test_nome_fora_da_allowlist_nao_e_servido(self):
+        for tentativa in ("index.html", "../pyproject.toml", "..%2Fpyproject.toml"):
+            resposta = self.client.get(f"/assets/{tentativa}")
+            assert resposta.status_code == 404, tentativa
+
+    def test_favicon_ico_responde(self):
+        """O navegador pede /favicon.ico mesmo com o <link> no HTML."""
+        resposta = self.client.get("/favicon.ico")
+        assert resposta.status_code == 200
+        assert resposta.headers["content-type"] == "image/png"
+
+    def test_paginas_declaram_logo_e_compartilhamento(self):
+        for caminho in ("/", "/ferramentas"):
+            html = self.client.get(caminho).text
+            assert "/assets/logo.png" in html, caminho
+            assert "/assets/favicon.png" in html, caminho
+            # A imagem de compartilhamento precisa de URL absoluta para os
+            # raspadores de link conseguirem buscá-la.
+            assert 'property="og:image" content="https://' in html, caminho
