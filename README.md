@@ -29,8 +29,52 @@ identidade da cliente.</sub>
 
 ---
 
+## Demonstração online
+
+Sem instalar nada:
+
+| | |
+| --- | --- |
+| **Conversar com o Téo** | https://emporio-da-musica-six.vercel.app |
+| **Camada determinística** | https://emporio-da-musica-six.vercel.app/ferramentas |
+| **Diagnóstico do ambiente** | https://emporio-da-musica-six.vercel.app/api/health |
+| **API (OpenAPI)** | https://emporio-da-musica-six.vercel.app/docs |
+
+São duas partes, e a separação é deliberada.
+
+O **chat** depende do provedor de LLM. No nível gratuito a cota soma ~120
+chamadas por dia entre os seis modelos da cadeia de reserva e o agente faz 2 a 3
+chamadas por turno — ou seja, 40 a 60 turnos diários para todos os visitantes
+juntos. Quando esgota, o agente informa a cota em vez de fingir que funciona.
+
+A página de **ferramentas** não depende disso. Ela executa as 11 ferramentas
+determinísticas direto sobre os dados da loja: sem LLM, sem chave, sem cota —
+então nunca fica indisponível. Traz um roteiro clicável dos casos que mais
+importam, e cada um explica a decisão que demonstra:
+
+- as 4 promoções ativas de 25, com o aviso de apresentação do §6.2;
+- os 5% do PIX **não** acumulando sobre preço promocional, e a parcela mínima
+  por faixa do §3.1;
+- a trava de identidade do §9, que devolve zero dado do cliente;
+- o frete grátis com a regra citada, e o frete que devolve `null` em vez de
+  inventar um valor que depende de cotação;
+- a política com seção e página de origem;
+- o modelo que não existe no catálogo recebendo a alternativa que existe.
+
+É a mesma camada que o agente consulta ao conversar: o que aparece ali é o que
+ele recebe.
+
+<sub>Hospedado em função serverless. O banco e o índice de políticas são
+construídos na primeira requisição de cada instância (~1,3s) em disco efêmero,
+o que tem uma consequência honesta: o histórico de conversa não é compartilhado
+entre instâncias. Para demonstração serve; em produção o histórico iria para
+banco gerenciado.</sub>
+
+---
+
 ## Sumário
 
+- [Demonstração online](#demonstração-online)
 - [Como rodar](#como-rodar)
 - [O que o agente faz](#o-que-o-agente-faz)
 - [Arquitetura](#arquitetura)

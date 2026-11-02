@@ -37,6 +37,7 @@ O princípio que amarra tudo, e que apliquei a cada fronteira do sistema:
 | 15 | Transcrições geradas, não escritas à mão | `b593cca` |
 | 16 | Não insistir com backoff em erro que é do modelo | `2fca292` |
 | 17 | Caminho de erro da CLI legível | `b7b5c51` |
+| 18 | Site online com a parte que nunca quebra em primeiro plano | `5b91239` |
 
 ---
 
@@ -596,6 +597,58 @@ tratava argumento ausente pelo seu próprio caminho, coberto por teste (entrada
 
 ---
 
+## 18. Site online com a parte que nunca quebra em primeiro plano
+
+**Commits:** `5b91239`, `3b9b7e9`
+
+**A pergunta.** Como deixar o projeto acessível sem instalação, sabendo que a
+cota gratuita do provedor não sustenta um link público?
+
+**A conta que decidiu o desenho.** Seis modelos na cadeia de reserva, ~20
+requisições por dia cada, 2 a 3 chamadas por turno: **40 a 60 turnos diários
+para todos os visitantes somados**. Uma conversa de avaliação tem 5 a 8 turnos,
+então o chat sozinho aguentaria de 6 a 12 conversas por dia. Um link que fica
+morto a maior parte do tempo é pior do que não ter link.
+
+**A escolha.** Duas superfícies, e a que não depende de LLM é a que sustenta a
+demonstração:
+
+- `POST /api/tool/{nome}` executa qualquer uma das 11 ferramentas sem modelo,
+  espelhando o `emporio tool` da CLI. Sem chave, sem cota, de pé sempre.
+- `/ferramentas` exercita esse endpoint com um roteiro clicável dos casos que
+  mais importam, cada um explicando a decisão que demonstra.
+
+**O que isso não afrouxa.** Ferramenta que lê dado pessoal continua exigindo
+confirmação de identidade, porque a regra vive dentro da ferramenta e não na
+camada de transporte. Há teste de tentativa de vazamento pelo HTTP para fixar
+isso, além do que já existia na ferramenta.
+
+**Duas condições que o uso local não tem, e como foram resolvidas.** Em
+serverless o disco do pacote é somente-leitura fora de `/tmp`, e cada instância
+fria começa sem os derivados do ETL. `var_dir` e `logs_dir` passaram a vir do
+ambiente — default inalterado, então nada muda localmente — e `api/index.py`
+roda o ETL mais a indexação na primeira requisição da instância, em 1,3s
+medidos. O relatório de qualidade não é gerado em produção (`write_report=False`)
+porque é artefato versionado e `docs/` não aceita escrita.
+
+**O erro que o primeiro deploy revelou.** Eu havia posto um rewrite de `/(.*)`
+para `/api/index.py` no `vercel.json`. Isso reescreve o próprio path, então o
+ASGI recebia `/api/index.py` literal e o FastAPI respondia 404 em **toda** rota,
+inclusive na raiz. O preset `fastapi` do Vercel já roteia todo o tráfego para o
+app: o rewrite era redundante e atropelava esse roteamento. Removido em
+`3b9b7e9`.
+
+**Limitação registrada no próprio módulo.** `/tmp` é por instância e efêmero, de
+modo que o histórico de conversa não é compartilhado entre instâncias nem
+sobrevive à reciclagem. Para demonstração é aceitável; em produção o store de
+conversa iria para banco gerenciado.
+
+**Quando eu mudaria de ideia.** Com chave paga o chat deixa de ser o elo frágil
+e passa a ser a vitrine principal — e aí o histórico compartilhado deixa de ser
+detalhe e vira requisito.
+
+---
+
 ## As vezes em que eu estava errado
 
 Esta seção existe porque é a parte mais útil do projeto para mim. Em todos os
@@ -648,6 +701,7 @@ Medido num clone limpo deste repositório, em ambiente virtual novo:
 | `ruff check .` | limpo |
 | `emporio build` do zero | **0,96s** — 8 ocorrências de qualidade, 26 trechos indexados |
 | `emporio doctor` sem chave | Aponta o que falta e o que ainda funciona |
+| Produção | `/api/health` responde 200 com banco e índice construídos na instância fria; `/api/tools` lista as 11; `/ferramentas` e `/` servidas; `POST /api/tool/{nome}` registrado no OpenAPI |
 
 A única lacuna conhecida é o relatório em [`EVALUATION.md`](EVALUATION.md), que
 registra 6 dos 21 casos executados por esgotamento da cota do nível gratuito.
