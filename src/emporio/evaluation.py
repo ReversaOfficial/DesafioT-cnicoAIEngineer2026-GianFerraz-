@@ -306,10 +306,7 @@ def write_markdown(report: EvalReport, path: Path | None = None) -> Path:
 
     linhas += ["", "## Casos", "", "| Caso | Resultado | Ferramentas consultadas |", "| --- | --- | --- |"]
     for r in report.resultados:
-        if not r.executado:
-            marca = "⏭️ não executado"
-        else:
-            marca = "✅" if r.passou else "❌"
+        marca = "⏭️ não executado" if not r.executado else ("✅" if r.passou else "❌")
         ferramentas = ", ".join(f"`{f}`" for f in r.ferramentas_usadas) or "—"
         linhas.append(f"| `{r.case_id}` | {marca} | {ferramentas} |")
 

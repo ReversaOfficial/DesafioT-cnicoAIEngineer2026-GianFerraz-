@@ -55,10 +55,6 @@ MOTIVOS_VALIDOS = ("arrependimento", "defeito", "preferencia")
 CAMPANHAS_LIQUIDACAO = ("liquidacao", "queima de estoque")
 
 
-def _row_to_dict(row) -> dict:
-    return {k: row[k] for k in row.keys()}
-
-
 def _fetch_order(order_id: int):
     ensure_database()
     conn = connect(read_only=True)
@@ -113,11 +109,10 @@ def _verifica_identidade(order, confirmacao: str) -> bool:
     cadastrado = order["customer_name_norm"]
     if informado == cadastrado:
         return True
-    # "Lucas Silva" deve casar com "Lucas Mendes da Silva".
+    # "Lucas Silva" deve casar com "Lucas Mendes da Silva". Exige pelo menos
+    # dois nomes: primeiro nome sozinho é fácil demais de adivinhar.
     partes = [p for p in informado.split() if len(p) > 2]
-    if len(partes) >= 2 and all(p in cadastrado for p in partes):
-        return True
-    return False
+    return len(partes) >= 2 and all(p in cadastrado for p in partes)
 
 
 def _data_de_recebimento(order) -> tuple[date | None, str]:

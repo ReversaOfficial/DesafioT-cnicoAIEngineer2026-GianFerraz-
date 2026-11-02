@@ -52,4 +52,8 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
-ignore = ["E501"]
+ignore = [
+    "E501",   # comprimento de linha fica a cargo do formatador
+    "B008",   # `typer.Argument(...)` em default é o idioma da própria Typer
+    "SIM905", # a lista de stopwords é um bloco de texto por legibilidade
+]

@@ -105,6 +105,21 @@ def availability_label(availability: str) -> str:
     return AVAILABILITY_LABELS.get(availability, availability)
 
 
+def row_has(row: sqlite3.Row, column: str) -> bool:
+    """Diz se a linha traz determinada coluna.
+
+    Existe por uma armadilha do `sqlite3.Row`: `"coluna" in row` **não**
+    funciona, porque a iteração do tipo é sobre os VALORES, não sobre as
+    chaves — a checagem devolveria `False` sempre, em silêncio. A comparação
+    correta é contra `row.keys()`, que é o que o `noqa` abaixo preserva (a
+    regra SIM118 do linter é um falso positivo para este tipo).
+
+    Concentrar isso numa função só evita repetir a exceção em cada uso e deixa
+    o motivo registrado em um lugar.
+    """
+    return column in row.keys()  # noqa: SIM118
+
+
 def product_payload(row: sqlite3.Row, *, detailed: bool = False) -> dict:
     """Converte uma linha de produto no payload entregue ao modelo.
 
@@ -112,14 +127,18 @@ def product_payload(row: sqlite3.Row, *, detailed: bool = False) -> dict:
     `v_product_pricing` já filtra `is_active = 1`, então nenhuma promoção
     vencida chega até aqui (§7.3: nunca prometer desconto fora de vigência).
     """
-    list_price = float(row["list_price"] if "list_price" in row.keys() else row["price_brl"])
-    discount = float(row["active_discount_percent"] or 0) if "active_discount_percent" in row.keys() else 0.0
+    list_price = float(row["list_price"] if row_has(row, "list_price") else row["price_brl"])
+    discount = (
+        float(row["active_discount_percent"] or 0)
+        if row_has(row, "active_discount_percent")
+        else 0.0
+    )
 
     payload: dict = {
         "product_id": row["product_id"],
         "nome": row["name"],
         "marca": row["brand"],
-        "categoria": row["category_name"] if "category_name" in row.keys() else None,
+        "categoria": row["category_name"] if row_has(row, "category_name") else None,
         "preco_tabela": round(list_price, 2),
         "preco_tabela_formatado": brl(list_price),
         "disponibilidade": row["availability"],
@@ -133,7 +152,7 @@ def product_payload(row: sqlite3.Row, *, detailed: bool = False) -> dict:
             {
                 "promocao_ativa": True,
                 "promocao_nome": row["active_promotion_label"]
-                if "active_promotion_label" in row.keys()
+                if row_has(row, "active_promotion_label")
                 else None,
                 "desconto_percentual": discount,
                 "preco_promocional": final,
