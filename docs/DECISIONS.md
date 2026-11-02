@@ -696,14 +696,18 @@ Medido num clone limpo deste repositório, em ambiente virtual novo:
 
 | Verificação | Resultado |
 |---|---|
-| `pytest` | **308 testes passando**, ~5s, sem rede e sem chave de API |
+| `pytest` | **315 testes passando**, ~5s, sem rede e sem chave de API |
 | Cobertura | **81%** |
 | `ruff check .` | limpo |
 | `emporio build` do zero | **0,96s** — 8 ocorrências de qualidade, 26 trechos indexados |
 | `emporio doctor` sem chave | Aponta o que falta e o que ainda funciona |
+| `emporio eval --report` | **21/21 (100%)** em 02/11/2026, os oito eixos em 100%, nenhum caso pulado |
 | Produção | `/api/health` responde 200 com banco e índice construídos na instância fria; `/api/tools` lista as 11; `/ferramentas` e `/` servidas; `POST /api/tool/{nome}` registrado no OpenAPI |
 
-A única lacuna conhecida é o relatório em [`EVALUATION.md`](EVALUATION.md), que
-registra 6 dos 21 casos executados por esgotamento da cota do nível gratuito.
-Está documentado como limitação no README, e o harness distingue corretamente
-caso reprovado de caso não executado — pela razão da entrada 11.
+O relatório em [`EVALUATION.md`](EVALUATION.md) registra a execução completa:
+**21 casos de 21, todos aprovados**, com os oito eixos em 100%. Chegar nele
+dependeu da cadeia de seis modelos de reserva da entrada 12 — a cota de um
+único modelo do nível gratuito não cobre uma execução inteira. E a leitura só é
+confiável por causa da entrada 11: o score é calculado sobre os casos que
+efetivamente rodaram, de modo que um relatório parcial se declara parcial em vez
+de se passar por reprovação.

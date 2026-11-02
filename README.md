@@ -205,7 +205,7 @@ A camada determinística — que é onde vivem as regras de negócio — não de
 de LLM nenhum:
 
 ```bash
-pytest                                                   # 308 testes
+pytest                                                   # 315 testes
 python -m emporio.cli tool buscar_produtos categoria=Violões preco_max=1000
 python -m emporio.cli tool calcular_preco product_id=127 forma_pagamento=10x
 ```
@@ -576,7 +576,7 @@ Duas camadas de verificação, com propósitos diferentes.
 ### Testes automatizados — a camada determinística
 
 ```bash
-pytest                                      # 308 testes, ~12s
+pytest                                      # 315 testes, ~5s
 pytest --cov=emporio --cov-report=term      # cobertura: 80%
 ```
 
@@ -621,7 +621,9 @@ modo que o score não muda conforme o dia da execução. O comando sai com códi
 cota esgotada, que é falha de infraestrutura.
 
 O relatório da última execução fica em
-[`docs/EVALUATION.md`](docs/EVALUATION.md), gerado pelo próprio comando.
+[`docs/EVALUATION.md`](docs/EVALUATION.md), gerado pelo próprio comando. A
+execução de 02/11/2026 rodou **os 21 casos** e passou em todos — **21/21**, com
+os oito eixos em 100%.
 
 **O que a avaliação encontrou, e o que isso mudou.** Na primeira execução
 completa o score foi **16/20**. Investigando os quatro reprovados, **nenhum era
@@ -714,18 +716,20 @@ Sendo direto sobre o que não está resolvido:
    latência.
 10. **O eval depende do modelo.** O score varia com provedor e versão de
     modelo. É esperado — é uma medida do sistema completo, não de regressão de
-    código. Para isso existem os 308 testes determinísticos.
-11. **A cota gratuita limita a execução, e isso aparece nos artefatos.** Com
-    ~20 requisições por dia por modelo, uma execução completa do eval (20 casos
-    × 2-3 chamadas) não cabe na cota de um único modelo. O harness trata isso
-    de frente: distingue *caso reprovado* de *caso não executado* e calcula o
-    score só sobre o que rodou, porque um relatório que conta falha de cota
-    como falha de comportamento mede o dia, não o agente. Algumas das
-    transcrições em `examples/` registram no rodapé a troca de modelo que
-    ocorreu no meio da conversa. **Num cenário real isto não existiria:** com
-    conta paga, a conversa inteira roda numa única versão de modelo e o eval
-    completo custa centavos. A escolha por nível gratuito aqui é deliberada,
-    para que o projeto seja executável por quem for avaliá-lo sem custo.
+    código. Para isso existem os 315 testes determinísticos.
+11. **A cota gratuita aperta a medição, e isso aparece nos artefatos.** Com
+    ~20 requisições por dia por modelo, uma execução completa do eval (21 casos
+    × 2-3 chamadas) **não cabe na cota de um único modelo** — é a cadeia de
+    seis modelos de reserva que torna a execução completa possível, e foi assim
+    que saiu o 21/21. Até isso ficar de pé, o harness sustentou a medição
+    distinguindo *caso reprovado* de *caso não executado* e calculando o score
+    só sobre o que rodou, porque um relatório que conta falha de cota como
+    falha de comportamento mede o dia, não o agente. Algumas das transcrições
+    em `examples/` ainda registram no rodapé a troca de modelo que ocorreu no
+    meio da conversa. **Num cenário real isto não existiria:** com conta paga,
+    a conversa inteira roda numa única versão de modelo e o eval completo custa
+    centavos. A escolha por nível gratuito aqui é deliberada, para que o
+    projeto seja executável por quem for avaliá-lo sem custo.
 
 ---
 
@@ -866,7 +870,7 @@ contradiz. É nessa segunda parte que está o projeto.
 │   ├── agent/                    persona, prompt e laço ReAct
 │   └── memory/                   persistência de conversa
 │
-└── tests/                        308 testes, sem rede e sem chave de API
+└── tests/                        315 testes, sem rede e sem chave de API
 ```
 
 ---
