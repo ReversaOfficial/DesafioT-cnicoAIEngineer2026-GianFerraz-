@@ -643,6 +643,15 @@ modo que o histórico de conversa não é compartilhado entre instâncias nem
 sobrevive à reciclagem. Para demonstração é aceitável; em produção o store de
 conversa iria para banco gerenciado.
 
+**A fronteira está dita na própria interface.** O explorador, o botão
+*consultas* do chat, o `/docs` e o `/api/health` não são funcionalidade de
+cliente — são superfícies de inspeção. A página declara isso num parágrafo
+próprio: numa implantação real elas ficariam atrás de um painel interno da
+equipe, fora do canal do cliente. Reconhecer a fronteira vale mais do que
+defender a exposição: o enunciado convida a acrescentar o que melhore *a
+experiência de atendimento ao cliente*, e isto não é isso. É ferramenta de quem
+avalia, e está exposta porque avaliar sem ela custaria cota de modelo.
+
 **Quando eu mudaria de ideia.** Com chave paga o chat deixa de ser o elo frágil
 e passa a ser a vitrine principal — e aí o histórico compartilhado deixa de ser
 detalhe e vira requisito.

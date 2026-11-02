@@ -95,6 +95,10 @@
     margin-bottom: 22px;
   }
   .note strong { color: var(--amber); }
+  .note .escopo {
+    display: block; margin-top: 12px; padding-top: 11px;
+    border-top: 1px solid var(--nota-linha); font-size: .92em; opacity: .92;
+  }
   h2 { font-size: .95rem; text-transform: uppercase; letter-spacing: .06em;
        color: var(--muted); margin: 26px 0 10px; font-weight: 600; }
   .chips { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -272,7 +276,7 @@ const TEXTOS = {
     linkChat: '← Conversar com o Téo', linkFerr: 'Ferramentas', linkApi: 'API (OpenAPI)', linkDiag: 'Diagnóstico',
     idiomaRotulo: 'EN', idiomaTitulo: 'Switch the interface to English',
     temaTitulo: 'Alterna entre tema claro e escuro',
-    nota: '<strong>Por que esta página existe.</strong> A tese do projeto é que o LLM decide <em>o que</em> perguntar e <em>como</em> conversar, mas preço, prazo, frete e disponibilidade saem de código Python testado. Aqui esse código roda sozinho: nenhuma chamada de modelo, nenhuma chave de API, nenhuma cota. <strong>Esta parte do serviço nunca fica indisponível</strong> — e é a mesma camada que o agente consulta ao conversar.',
+    nota: '<strong>Por que esta página existe.</strong> A tese do projeto é que o LLM decide <em>o que</em> perguntar e <em>como</em> conversar, mas preço, prazo, frete e disponibilidade saem de código Python testado. Aqui esse código roda sozinho: nenhuma chamada de modelo, nenhuma chave de API, nenhuma cota. <strong>Esta parte do serviço nunca fica indisponível</strong> — e é a mesma camada que o agente consulta ao conversar.<span class="escopo"><strong>Nota de escopo.</strong> Isto não é funcionalidade de cliente. Esta página, o botão <em>consultas</em> do chat, o <code>/docs</code> e o <code>/api/health</code> estão expostos aqui para facilitar a avaliação do projeto. Numa implantação real eles ficariam atrás de um painel interno da equipe, fora do canal do cliente.</span>',
     roteiro: 'Roteiro sugerido', lista: 'Ferramentas',
     executar: 'Executar', carregando: 'Carregando…', executando: 'executando…',
     semArgumentos: 'Esta ferramenta não recebe argumentos.',
@@ -287,7 +291,7 @@ const TEXTOS = {
     linkChat: '← Chat with Téo', linkFerr: 'Tools', linkApi: 'API (OpenAPI)', linkDiag: 'Diagnostics',
     idiomaRotulo: 'PT', idiomaTitulo: 'Mudar a interface para português',
     temaTitulo: 'Toggle between light and dark theme',
-    nota: '<strong>Why this page exists.</strong> The thesis of the project is that the LLM decides <em>what</em> to ask and <em>how</em> to talk, while price, deadlines, shipping and availability come out of tested Python. Here that code runs on its own: no model call, no API key, no quota. <strong>This part of the service never goes down</strong> — and it is the same layer the agent queries while talking. <em>Tool names, parameters and responses stay in Portuguese: that is the real API contract, not a translation gap.</em>',
+    nota: '<strong>Why this page exists.</strong> The thesis of the project is that the LLM decides <em>what</em> to ask and <em>how</em> to talk, while price, deadlines, shipping and availability come out of tested Python. Here that code runs on its own: no model call, no API key, no quota. <strong>This part of the service never goes down</strong> — and it is the same layer the agent queries while talking. <em>Tool names, parameters and responses stay in Portuguese: that is the real API contract, not a translation gap.</em><span class="escopo"><strong>Scope note.</strong> This is not a customer-facing feature. This page, the chat\'s <em>lookups</em> button, <code>/docs</code> and <code>/api/health</code> are exposed here to make the project easier to evaluate. In a real deployment they would sit behind an internal staff panel, outside the customer channel.</span>',
     roteiro: 'Suggested tour', lista: 'Tools',
     executar: 'Run', carregando: 'Loading…', executando: 'running…',
     semArgumentos: 'This tool takes no arguments.',
