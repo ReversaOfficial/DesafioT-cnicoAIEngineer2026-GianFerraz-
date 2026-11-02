@@ -266,10 +266,53 @@ def _explain_empty_result(
 
     out["motivo"] = "sem_correspondencia"
     out["explicacao"] = (
-        "Nenhum produto corresponde aos filtros. Vale confirmar o modelo com o "
-        "cliente ou oferecer uma busca mais ampla."
+        "Nenhum produto corresponde a todos os termos informados. Vale "
+        "confirmar o modelo com o cliente ou oferecer uma alternativa."
     )
+    parecidos = _buscar_parecidos(tokens, category_id)
+    if parecidos:
+        out["produtos_parecidos"] = parecidos
+        out["explicacao"] += (
+            " Há itens que correspondem a parte dos termos, listados em "
+            "`produtos_parecidos` — informe que o modelo exato não existe no "
+            "catálogo e ofereça esses equivalentes, como pede o §7.3."
+        )
     return out
+
+
+def _buscar_parecidos(tokens: list[str], category_id: int | None, limite: int = 3) -> list[dict]:
+    """Produtos que casam com PARTE dos termos, ordenados por quantos casam.
+
+    A busca principal exige todos os termos (AND), que é o comportamento certo
+    para "violão nylon" mas cego para "Fender Stratocaster American
+    Professional" quando o catálogo tem a "American Pro II": o termo
+    'professional' derruba a consulta inteira e o agente fica sem o
+    equivalente que existe.
+
+    Esta busca de aproximação pontua cada produto disponível pelo número de
+    termos presentes no seu texto buscável e devolve os melhores. Um atendente
+    humano faria o mesmo: reconheceria a marca e o modelo e mostraria o que
+    tem. Fica restrita ao resultado vazio, para não poluir a busca normal.
+    """
+    if not tokens:
+        return []
+
+    pontuacao = " + ".join(
+        f"(CASE WHEN p.search_blob LIKE :t{i} THEN 1 ELSE 0 END)" for i in range(len(tokens))
+    )
+    params: dict = {f"t{i}": f"%{t}%" for i, t in enumerate(tokens)}
+    where = ["p.availability = 'in_stock'"]
+    if category_id is not None:
+        where.append("p.category_id = :category_id")
+        params["category_id"] = category_id
+
+    sql = (
+        PRODUCT_SELECT
+        + f" WHERE {' AND '.join(where)} AND ({pontuacao}) > 0"
+        + f" ORDER BY ({pontuacao}) DESC, v.list_price ASC LIMIT :limite"
+    )
+    params["limite"] = limite
+    return [product_payload(row) for row in _rows(sql, params)]
 
 
 def detalhar_produto(product_id: int | None = None, nome: str = "") -> dict:

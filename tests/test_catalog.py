@@ -100,6 +100,40 @@ class TestDiagnosticoDeVazio:
         assert resultado["total_encontrado"] == 0
         assert resultado["motivo"] == "sem_correspondencia"
 
+    def test_modelo_proximo_e_oferecido_quando_o_exato_nao_existe(self):
+        """O AND de todos os termos é cego para 'quase o mesmo modelo'.
+
+        O catálogo tem a 'Fender Stratocaster American Pro II'. Quem pergunta
+        pela 'American Professional' derrubaria a busca inteira no termo
+        'professional' — e o agente ficaria sem o equivalente que existe,
+        apesar de o §7.3 mandar oferecê-lo.
+        """
+        resultado = buscar_produtos(termo="Fender Stratocaster American Professional")
+        assert resultado["total_encontrado"] == 0
+        parecidos = resultado["produtos_parecidos"]
+        assert parecidos[0]["nome"] == "Fender Stratocaster American Pro II"
+        assert parecidos[0]["preco_tabela"] == 12500.0
+        assert "§7.3" in resultado["explicacao"]
+
+    def test_parecidos_so_trazem_itens_disponiveis(self):
+        for produto in buscar_produtos(termo="Fender Stratocaster American Professional")[
+            "produtos_parecidos"
+        ]:
+            assert produto["disponibilidade"] == "in_stock"
+
+    def test_sem_parecidos_quando_nada_casa(self):
+        """Marca que não existe no catálogo não deve inventar equivalente."""
+        resultado = buscar_produtos(termo="Gretsch G2622 Streamliner")
+        assert resultado["total_encontrado"] == 0
+        assert "produtos_parecidos" not in resultado
+
+    def test_parecidos_respeitam_a_categoria_filtrada(self):
+        resultado = buscar_produtos(
+            termo="Fender Stratocaster American Professional", categoria="Violões"
+        )
+        for produto in resultado.get("produtos_parecidos", []):
+            assert produto["categoria"] == "Violões"
+
     def test_categoria_inexistente_lista_as_validas(self):
         with pytest.raises(ToolError) as exc:
             buscar_produtos(categoria="Instrumentos de Cozinha")

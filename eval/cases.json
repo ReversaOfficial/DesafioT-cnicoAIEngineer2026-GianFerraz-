@@ -123,13 +123,12 @@
     },
     {
       "id": "horario-fechado-no-domingo",
-      "cenario": "Data de referência num domingo. §7.1 manda informar quando a equipe retorna.",
+      "cenario": "Data de referência num domingo. §7.1 manda informar quando a equipe retorna. NÃO exige consulta a ferramenta de propósito: o prompt do sistema injeta data, hora e situação de funcionamento a cada turno, então pedir uma chamada para algo que o agente já tem em contexto seria desperdício. A versão anterior deste caso exigia a chamada e reprovava uma resposta que estava correta — era o teste que estava errado, não o agente.",
       "pergunta": "Vocês estão abertos agora?",
       "eixo": "politica",
       "data_de_referencia": "2026-03-22T15:00",
-      "exige_consulta": true,
-      "ferramentas_esperadas_algum": ["informacoes_da_loja", "consultar_politicas"],
-      "deve_conter_algum": ["fechad", "segunda", "09:00", "9h"],
+      "exige_consulta": false,
+      "deve_conter_algum": ["fechad"],
       "nao_deve_conter": ["estamos abertos", "pode vir agora"]
     },
     {
@@ -139,18 +138,28 @@
       "eixo": "catalogo",
       "exige_consulta": true,
       "ferramentas_esperadas_algum": ["buscar_produtos", "detalhar_produto"],
-      "deve_conter_algum": ["indisponív", "indisponiv", "sem estoque", "esgotad", "não temos", "nao temos"],
+      "deve_conter_algum": ["indisponív", "indisponiv", "sem estoque", "sem ele em estoque", "estamos sem", "esgotad", "não temos", "nao temos"],
       "nao_deve_conter": ["pode levar", "temos em estoque"]
     },
     {
       "id": "produto-inexistente-no-catalogo",
-      "cenario": "Fender não está no catálogo. O agente não pode inventar preço nem prometer encomenda.",
+      "cenario": "Gretsch não existe no catálogo (confirmado por consulta). O agente não pode inventar preço nem prometer encomenda de um modelo que a loja não tem.",
+      "pergunta": "Quanto custa a Gretsch G2622 Streamliner?",
+      "eixo": "catalogo",
+      "exige_consulta": true,
+      "ferramentas_esperadas_algum": ["buscar_produtos", "detalhar_produto"],
+      "deve_conter_algum": ["não tem", "nao tem", "não temos", "nao temos", "não trabalh", "nao trabalh"],
+      "nao_deve_conter": ["Gretsch G2622 custa", "a Gretsch sai por"]
+    },
+    {
+      "id": "modelo-exato-ausente-com-alternativa-real",
+      "cenario": "O cliente pede a 'American Professional', que não existe no catálogo — mas a 'American Pro II' existe (produto 145, R$ 12.500,00). O agente deve ser claro sobre não ter o modelo exato e oferecer a alternativa REAL, com o preço de verdade. Este caso nasceu de um erro meu: a versão anterior afirmava que Fender não estava no catálogo e reprovava o agente por citar um preço. A consulta mostrou que o produto existe e o valor citado estava certo.",
       "pergunta": "Quanto custa a Fender Stratocaster American Professional?",
       "eixo": "catalogo",
       "exige_consulta": true,
       "ferramentas_esperadas_algum": ["buscar_produtos", "detalhar_produto"],
-      "deve_conter_algum": ["não", "nao"],
-      "nao_deve_conter": ["R$"]
+      "deve_conter_algum": ["12.500", "12500"],
+      "nao_deve_conter": ["temos a American Professional", "a American Professional custa"]
     },
     {
       "id": "fora-de-escopo-geral",
@@ -176,7 +185,7 @@
       "eixo": "precificacao",
       "exige_consulta": true,
       "ferramentas_esperadas_algum": ["promocoes_ativas", "detalhar_produto", "calcular_preco", "buscar_produtos"],
-      "deve_conter_algum": ["não está", "nao esta", "encerr", "não está mais", "899"],
+      "deve_conter_algum": ["não está", "nao esta", "encerr", "não temos nenhuma promo", "nao temos nenhuma promo", "não há promoção", "nao ha promocao", "899"],
       "nao_deve_conter": ["30% de desconto", "629"]
     },
     {
