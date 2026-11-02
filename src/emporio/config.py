@@ -133,8 +133,12 @@ class Settings:
         repositório precisam ser reproduzíveis, e as regras de prazo (7 dias de
         arrependimento, 30 de troca, 90 de garantia) só podem ser testadas de
         forma confiável com o tempo controlado.
+
+        A variável é lida a cada chamada, não no construtor, para que um teste
+        possa congelar a data com `monkeypatch.setenv` sem recriar o objeto de
+        configuração inteiro.
         """
-        raw = self.now_override
+        raw = (os.getenv("EMPORIO_NOW") or self.now_override).strip()
         if raw:
             for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
                 try:

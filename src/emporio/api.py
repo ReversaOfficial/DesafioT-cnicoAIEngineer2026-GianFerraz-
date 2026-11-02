@@ -163,9 +163,14 @@ def chat(request: ChatRequest) -> ChatResponse:
 
 @api.get("/api/session/{session_id}")
 def historico(session_id: str) -> dict:
-    """Transcrição de uma sessão."""
-    service = get_service()
-    mensagens = service.transcript(session_id)
+    """Transcrição de uma sessão.
+
+    Lê direto do armazenamento, sem passar pelo serviço de agente: consultar
+    histórico não deveria exigir um LLM configurado.
+    """
+    from emporio.memory.store import ConversationStore
+
+    mensagens = ConversationStore().transcript(session_id)
     if not mensagens:
         raise HTTPException(status_code=404, detail="Sessão sem mensagens ou inexistente.")
     return {"session_id": session_id, "mensagens": mensagens}
