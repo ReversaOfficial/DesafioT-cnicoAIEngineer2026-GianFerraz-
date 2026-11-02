@@ -135,15 +135,20 @@
   .who { flex: 1 1 auto; min-width: 0; }
   /* Nome e status numa linha só, cortando com reticências em vez de quebrar
      palavra por palavra quando o espaço aperta. */
-  .who b, .who span {
-    display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  .who b {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 15px; letter-spacing: .2px;
   }
-  .who b { font-size: 15px; letter-spacing: .2px; }
-  .who span { font-size: 12.5px; color: var(--muted); }
+  /* Só o nome corta com reticências: assim a bolinha de status nunca fica
+     fora da tela quando o espaço aperta. */
+  .who .nome, .who > span {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .who > span { display: block; font-size: 12.5px; color: var(--muted); }
   .acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; flex: 0 0 auto; }
   .dot {
     display: inline-block; width: 7px; height: 7px;
-    border-radius: 50%; background: var(--online); margin-right: 5px;
+    border-radius: 50%; background: var(--online); flex-shrink: 0;
   }
   .dot.off { background: var(--offline); }
   .hbtn {
@@ -306,8 +311,8 @@
   <header>
     <img class="avatar" src="/assets/logo.png" alt="Logotipo da Empório da Música" width="42" height="42">
     <div class="who">
-      <b>Téo &middot; Empório da Música</b>
-      <span id="status"><span class="dot off"></span>conectando…</span>
+      <b><span class="nome">Téo &middot; Empório da Música</span><span class="dot off" id="dot"></span></b>
+      <span id="status">conectando…</span>
     </div>
     <div class="acoes">
       <button class="hbtn" id="btn-trace" title="Mostra quais consultas o agente fez">consultas</button>
@@ -335,6 +340,7 @@ const input   = document.getElementById('input');
 const sendBtn = document.getElementById('send');
 const chips   = document.getElementById('chips');
 const statusEl= document.getElementById('status');
+const dotEl   = document.getElementById('dot');
 const btnTrace= document.getElementById('btn-trace');
 const btnReset= document.getElementById('btn-reset');
 const btnIdioma = document.getElementById('btn-idioma');
@@ -496,9 +502,8 @@ async function boot() {
   try {
     const health = await fetch('/api/health').then(r => r.json());
     const ok = health.status === 'ok';
-    statusEl.innerHTML =
-      `<span class="dot ${ok ? '' : 'off'}"></span>` +
-      (ok ? `${T().online} · ${health.llm.modelo}` : T().semConfig);
+    dotEl.className = ok ? 'dot' : 'dot off';
+    statusEl.textContent = ok ? T().online : T().semConfig;
     if (!ok) {
       // A mensagem precisa servir aos dois contextos: quem rodou local
       // esqueceu o .env, e quem abriu o site hospedado pegou a cota ou a
@@ -512,7 +517,8 @@ async function boot() {
       return;
     }
   } catch {
-    statusEl.innerHTML = `<span class="dot off"></span>${T().semServidor}`;
+    dotEl.className = 'dot off';
+    statusEl.textContent = T().semServidor;
     return;
   }
 
