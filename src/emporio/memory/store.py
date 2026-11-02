@@ -179,7 +179,16 @@ class ConversationStore:
                         message.content,
                         json.dumps(
                             [
-                                {"id": c.id, "name": c.name, "arguments": c.arguments}
+                                {
+                                    "id": c.id,
+                                    "name": c.name,
+                                    "arguments": c.arguments,
+                                    # Precisa sobreviver à persistência: sem a
+                                    # assinatura de raciocínio, uma sessão
+                                    # retomada é rejeitada pelos modelos
+                                    # Gemini 3.x com HTTP 400.
+                                    "metadata": c.metadata,
+                                }
                                 for c in message.tool_calls
                             ],
                             ensure_ascii=False,
@@ -208,7 +217,12 @@ class ConversationStore:
             if row["tool_calls"]:
                 try:
                     calls = [
-                        ToolCall(id=c["id"], name=c["name"], arguments=c["arguments"])
+                        ToolCall(
+                            id=c["id"],
+                            name=c["name"],
+                            arguments=c["arguments"],
+                            metadata=c.get("metadata") or {},
+                        )
                         for c in json.loads(row["tool_calls"])
                     ]
                 except (json.JSONDecodeError, KeyError, TypeError):

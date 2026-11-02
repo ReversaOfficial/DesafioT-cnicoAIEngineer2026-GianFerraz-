@@ -28,7 +28,14 @@ STORE_TIMEZONE = ZoneInfo("America/Campo_Grande")
 # Defaults de modelo por provedor. Centralizados para que o `.env` possa ficar
 # com EMPORIO_LLM_MODEL vazio e ainda assim funcionar.
 DEFAULT_MODELS: dict[str, str] = {
-    "gemini": "gemini-2.5-flash",
+    # Pinado de propósito, para que o comportamento seja reproduzível.
+    #
+    # Escolhido empiricamente: o Google descontinua versões para contas novas
+    # sem aviso (a 2.5-flash retorna 404 em chave nova) e os modelos mais
+    # recentes vivem saturados (a 3.8-flash devolveu 503 "high demand" em três
+    # tentativas). A 3.5-flash é estável, atende em ~2,5s e tem function
+    # calling confiável. `emporio models` lista o que a sua chave acessa.
+    "gemini": "gemini-3.5-flash",
     "openai": "gpt-4o-mini",
     "anthropic": "claude-sonnet-4-5",
     "groq": "llama-3.3-70b-versatile",

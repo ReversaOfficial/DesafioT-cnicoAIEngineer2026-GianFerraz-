@@ -28,6 +28,12 @@ class ToolCall:
     id: str
     name: str
     arguments: dict[str, Any] = field(default_factory=dict)
+    # Metadados opacos do provedor que precisam voltar intactos no histórico.
+    # O campo é neutro de propósito: só o adaptador sabe o que guarda ali.
+    # Caso concreto: os modelos Gemini 3.x exigem que o `thoughtSignature`
+    # recebido na chamada de função seja devolvido junto dela na próxima
+    # requisição, sob pena de HTTP 400.
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -140,9 +146,18 @@ def friendly_http_error(provider: str, status: int, body: str) -> LLMError:
             f"alguns segundos ou troque de modelo/provedor.\nResposta: {snippet}"
         )
     if status == 404:
+        # O Google descontinua versões para contas novas sem aviso. Este é o
+        # erro que mais custa tempo a quem clona o projeto meses depois, então
+        # a mensagem aponta o comando que resolve.
+        dica = (
+            "\nRode `emporio models` para ver o que a sua chave acessa e "
+            "ajuste EMPORIO_LLM_MODEL no .env."
+            if provider == "gemini"
+            else ""
+        )
         return LLMError(
             f"{provider}: modelo não encontrado (HTTP 404). Confirme o valor de "
-            f"EMPORIO_LLM_MODEL.\nResposta: {snippet}"
+            f"EMPORIO_LLM_MODEL.{dica}\nResposta: {snippet}"
         )
     if status >= 500:
         return LLMError(

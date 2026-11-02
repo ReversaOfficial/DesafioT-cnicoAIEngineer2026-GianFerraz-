@@ -12,9 +12,14 @@ env/
 .coverage
 htmlcov/
 
-# Segredos — nunca versionar
-.env
+# Segredos — nunca versionar.
+# O padrão é amplo de propósito: no Windows é comum o editor salvar o arquivo
+# como `.env.txt`, que um `.gitignore` com apenas `.env` deixaria passar.
+.env*
+!.env.example
 *.key
+*.pem
+secrets.*
 
 # Artefatos gerados em runtime (reconstruiveis via `make build`)
 var/

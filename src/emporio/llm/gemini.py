@@ -88,9 +88,17 @@ class GeminiClient:
                 if message.content:
                     parts.append({"text": message.content})
                 for call in message.tool_calls:
-                    parts.append(
-                        {"functionCall": {"name": call.name, "args": call.arguments}}
-                    )
+                    part: dict[str, Any] = {
+                        "functionCall": {"name": call.name, "args": call.arguments}
+                    }
+                    # Obrigatório nos modelos Gemini 3.x: a assinatura de
+                    # raciocínio recebida com a chamada tem de voltar junto
+                    # dela, ou a API responde 400 reclamando de
+                    # `thought_signature` ausente.
+                    signature = call.metadata.get("thoughtSignature")
+                    if signature:
+                        part["thoughtSignature"] = signature
+                    parts.append(part)
                 if parts:
                     contents.append({"role": "model", "parts": parts})
             elif message.role == "tool":
@@ -177,11 +185,18 @@ class GeminiClient:
                 texts.append(part["text"])
             elif "functionCall" in part:
                 call = part["functionCall"]
+                metadata: dict[str, Any] = {}
+                # Preservada para ser devolvida no próximo turno (ver
+                # `_convert_messages`).
+                signature = part.get("thoughtSignature")
+                if signature:
+                    metadata["thoughtSignature"] = signature
                 tool_calls.append(
                     ToolCall(
                         id=f"gemini-{index}",
                         name=call.get("name", ""),
                         arguments=parse_arguments(call.get("args")),
+                        metadata=metadata,
                     )
                 )
 

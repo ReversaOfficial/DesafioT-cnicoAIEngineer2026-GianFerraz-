@@ -262,12 +262,28 @@ function syncTraceButton() {
   btnTrace.classList.toggle('on', showTrace);
 }
 
+// O modelo escreve com ênfase leve em markdown (`**assim**`), que é natural
+// num canal de mensagem. Convertemos apenas negrito e itálico — SEMPRE depois
+// de escapar o HTML, para que nada vindo do modelo ou do cliente possa injetar
+// marcação na página.
+function escapeHtml(texto) {
+  const div = document.createElement('div');
+  div.textContent = texto;
+  return div.innerHTML;
+}
+
+function formatarMensagem(texto) {
+  return escapeHtml(texto)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[\s(])\*(?!\s)([^*\n]+?)\*(?=[\s.,;:!?)]|$)/g, '$1<em>$2</em>');
+}
+
 function addBubble(text, kind) {
   const row = document.createElement('div');
   row.className = 'row ' + kind;
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
-  bubble.textContent = text;
+  bubble.innerHTML = formatarMensagem(text);
   row.appendChild(bubble);
   chat.appendChild(row);
   chat.scrollTop = chat.scrollHeight;

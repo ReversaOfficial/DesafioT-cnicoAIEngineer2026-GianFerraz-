@@ -107,6 +107,61 @@ class TestGemini:
         assert resposta.wants_tools is True
         assert resposta.tool_calls[0].arguments["preco_max"] == 1000
 
+    def test_thought_signature_e_preservada_no_parsing(self):
+        """Modelos Gemini 3.x exigem a assinatura de volta no histórico."""
+        resposta = GeminiClient._parse(
+            {
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [
+                                {
+                                    "functionCall": {
+                                        "name": "buscar_produtos",
+                                        "args": {"termo": "violao"},
+                                    },
+                                    "thoughtSignature": "Ct4BAbc123==",
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        )
+        assert resposta.tool_calls[0].metadata["thoughtSignature"] == "Ct4BAbc123=="
+
+    def test_thought_signature_volta_na_requisicao(self):
+        """Sem devolver a assinatura, a API responde HTTP 400."""
+        conversa = [
+            Message(role="user", content="oi"),
+            Message(
+                role="assistant",
+                tool_calls=[
+                    ToolCall(
+                        id="c1",
+                        name="buscar_produtos",
+                        arguments={"termo": "violao"},
+                        metadata={"thoughtSignature": "Ct4BAbc123=="},
+                    )
+                ],
+            ),
+        ]
+        contents = GeminiClient._convert_messages(conversa)
+        parte = contents[1]["parts"][0]
+        assert parte["thoughtSignature"] == "Ct4BAbc123=="
+        assert parte["functionCall"]["name"] == "buscar_produtos"
+
+    def test_sem_assinatura_a_chave_nao_e_enviada(self):
+        """Provedores que não usam assinatura não podem receber campo vazio."""
+        conversa = [
+            Message(
+                role="assistant",
+                tool_calls=[ToolCall(id="c1", name="x", arguments={})],
+            )
+        ]
+        parte = GeminiClient._convert_messages(conversa)[0]["parts"][0]
+        assert "thoughtSignature" not in parte
+
     def test_resposta_bloqueada_vira_erro_explicito(self):
         """Sem candidatos normalmente significa filtro de segurança."""
         with pytest.raises(LLMError):
