@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from emporio import __version__
-from emporio.agent.prompts import AGENT_NAME, SAUDACAO_INICIAL
+from emporio.agent.prompts import AGENT_NAME
 from emporio.agent.service import AgentService
 from emporio.config import settings
 from emporio.llm.base import LLMError
@@ -64,6 +64,11 @@ class ChatRequest(BaseModel):
     mensagem: str = Field(..., min_length=1, max_length=4000)
     session_id: str | None = Field(
         default=None, description="Omita para abrir uma sessão nova."
+    )
+    idioma: str = Field(
+        default="pt",
+        pattern="^(pt|en)$",
+        description="Idioma da resposta ao cliente. Não muda as regras do agente.",
     )
     incluir_trace: bool = Field(
         default=False, description="Inclui as ferramentas consultadas na resposta."
@@ -111,8 +116,11 @@ def health() -> dict:
 
 
 @api.get("/api/saudacao")
-def saudacao() -> dict:
-    return {"agente": AGENT_NAME, "mensagem": SAUDACAO_INICIAL}
+def saudacao(idioma: str = "pt") -> dict:
+    """Primeira mensagem, no idioma da interface."""
+    from emporio.agent.prompts import saudacao as texto_saudacao
+
+    return {"agente": AGENT_NAME, "mensagem": texto_saudacao(idioma)}
 
 
 @api.get("/api/tools")
@@ -200,7 +208,7 @@ def chat(request: ChatRequest) -> ChatResponse:
 
     session_id = service.open_session(request.session_id, channel="web")
     try:
-        turn = service.send(session_id, request.mensagem)
+        turn = service.send(session_id, request.mensagem, idioma=request.idioma)
     except LLMError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 

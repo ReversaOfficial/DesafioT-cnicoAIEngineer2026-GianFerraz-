@@ -337,3 +337,25 @@ class TestIdentidadeVisual:
             # A imagem de compartilhamento precisa de URL absoluta para os
             # raspadores de link conseguirem buscá-la.
             assert 'property="og:image" content="https://' in html, caminho
+
+
+class TestIdiomaPelaAPI:
+    def setup_method(self):
+        self.client = TestClient(api)
+
+    def test_saudacao_respeita_o_idioma(self):
+        assert self.client.get("/api/saudacao").json()["mensagem"].startswith("Oi!")
+        assert self.client.get("/api/saudacao?idioma=pt").json()["mensagem"].startswith("Oi!")
+        assert self.client.get("/api/saudacao?idioma=en").json()["mensagem"].startswith("Hi!")
+
+    def test_idioma_invalido_e_recusado(self):
+        """A lista fechada evita que texto arbitrário chegue ao prompt."""
+        resposta = self.client.post("/api/chat", json={"mensagem": "oi", "idioma": "fr"})
+        assert resposta.status_code == 422
+
+    def test_paginas_oferecem_idioma_e_tema(self):
+        for caminho in ("/", "/ferramentas"):
+            html = self.client.get(caminho).text
+            assert 'id="btn-idioma"' in html, caminho
+            assert 'id="btn-tema"' in html, caminho
+            assert '[data-tema="light"]' in html, caminho

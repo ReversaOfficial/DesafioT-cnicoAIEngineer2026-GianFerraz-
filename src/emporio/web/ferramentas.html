@@ -33,6 +33,29 @@
     --radius: 14px;
     --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --topo: linear-gradient(180deg, #211e18, #1b1a17);
+    --nota-linha: #5a441c;
+    --botao: linear-gradient(145deg, var(--amber), #a3691a);
+    --sobre-amber: #1b1405;
+    --erro: #e08c7a;
+  }
+
+  /* Tema claro: só os valores que mudam. O âmbar escurece porque o tom claro
+     não alcança contraste de leitura sobre branco. */
+  :root[data-tema="light"] {
+    --bg: #f3efe7;
+    --panel: #ffffff;
+    --panel-2: #f5f1e9;
+    --line: #e2dcd0;
+    --text: #1b1915;
+    --muted: #6b6457;
+    --amber: #9c6713;
+    --amber-soft: #fdf3e0;
+    --topo: linear-gradient(180deg, #fffdf8, #f7f3ea);
+    --nota-linha: #e7d3a6;
+    --botao: linear-gradient(145deg, #b5781a, #8f5c10);
+    --sobre-amber: #fffaf0;
+    --erro: #9d3b2b;
   }
   * { box-sizing: border-box; }
   body {
@@ -44,7 +67,7 @@
   }
   header {
     border-bottom: 1px solid var(--line);
-    background: linear-gradient(180deg, #211e18, #1b1a17);
+    background: var(--topo);
     padding: 18px 16px;
   }
   .wrap { max-width: 1060px; margin: 0 auto; }
@@ -59,9 +82,15 @@
     padding: 6px 12px; border-radius: 999px;
   }
   .nav a.on { border-color: var(--amber); color: var(--amber); }
+  .nav-btn {
+    font: inherit; font-size: .85rem; cursor: pointer; color: var(--text);
+    border: 1px solid var(--line); background: var(--panel-2);
+    padding: 6px 12px; border-radius: 999px;
+  }
+  .nav-btn:hover { border-color: var(--amber); }
   main { max-width: 1060px; margin: 0 auto; padding: 20px 16px 60px; }
   .note {
-    background: var(--amber-soft); border: 1px solid #5a441c;
+    background: var(--amber-soft); border: 1px solid var(--nota-linha);
     border-radius: var(--radius); padding: 14px 16px; font-size: .9rem;
     margin-bottom: 22px;
   }
@@ -105,7 +134,7 @@
   }
   .field input:focus { outline: 0; border-color: var(--amber); }
   .run {
-    background: linear-gradient(145deg, var(--amber), #a3691a); border: 0; color: #1b1405;
+    background: var(--botao); border: 0; color: var(--sobre-amber);
     font-weight: 700; border-radius: 10px; padding: 10px 20px; cursor: pointer;
     font-family: inherit; font-size: .9rem; margin-top: 4px;
   }
@@ -116,7 +145,7 @@
     max-height: 460px; margin: 12px 0 0; white-space: pre-wrap; word-break: break-word;
   }
   .status { font-size: .8rem; color: var(--muted); margin-top: 10px; font-family: var(--mono); }
-  .status.err { color: #e08c7a; }
+  .status.err { color: var(--erro); }
   .why { color: var(--muted); font-size: .86rem; border-left: 2px solid var(--amber);
          padding-left: 12px; margin: 12px 0 0; }
   footer { border-top: 1px solid var(--line); margin-top: 40px; padding: 18px 16px;
@@ -130,21 +159,23 @@
     <div class="marca">
       <img src="/assets/logo.png" alt="Logotipo da Empório da Música" width="48" height="48">
       <div>
-        <h1>Camada determinística</h1>
-        <p class="sub">As 11 ferramentas do agente, executadas direto sobre os dados reais da loja — sem LLM no caminho.</p>
+        <h1 id="t-titulo">Camada determinística</h1>
+        <p class="sub" id="t-sub">As 11 ferramentas do agente, executadas direto sobre os dados reais da loja — sem LLM no caminho.</p>
       </div>
     </div>
     <nav class="nav">
-      <a href="/">← Conversar com o Téo</a>
-      <a href="/ferramentas" class="on">Ferramentas</a>
-      <a href="/docs">API (OpenAPI)</a>
-      <a href="/api/health">Diagnóstico</a>
+      <a href="/" id="lnk-chat">← Conversar com o Téo</a>
+      <a href="/ferramentas" class="on" id="lnk-ferr">Ferramentas</a>
+      <a href="/docs" id="lnk-api">API (OpenAPI)</a>
+      <a href="/api/health" id="lnk-diag">Diagnóstico</a>
+      <button class="nav-btn" id="btn-idioma" title="Switch the interface to English">EN</button>
+      <button class="nav-btn" id="btn-tema" title="Alterna entre tema claro e escuro">☀</button>
     </nav>
   </div>
 </header>
 
 <main>
-  <div class="note">
+  <div class="note" id="t-nota">
     <strong>Por que esta página existe.</strong> A tese do projeto é que o LLM decide
     <em>o que</em> perguntar e <em>como</em> conversar, mas preço, prazo, frete e
     disponibilidade saem de código Python testado. Aqui esse código roda sozinho:
@@ -153,12 +184,12 @@
     camada que o agente consulta ao conversar.
   </div>
 
-  <h2>Roteiro sugerido</h2>
+  <h2 id="t-roteiro">Roteiro sugerido</h2>
   <div class="chips" id="presets"></div>
 
   <div class="cols">
     <div class="card">
-      <h2 style="margin-top:0">Ferramentas</h2>
+      <h2 style="margin-top:0" id="t-lista">Ferramentas</h2>
       <div class="tool-list" id="lista"></div>
     </div>
 
@@ -175,35 +206,100 @@
 
 <footer>
   <div class="wrap">
-    Empório da Música · loja fictícia do Desafio Técnico AI Engineer.
-    Os dados são os fornecidos no desafio. Código e justificativa de cada decisão no
-    <a href="https://github.com/ReversaOfficial/DesafioT-cnicoAIEngineer2026-GianFerraz-">repositório</a>.
+    <span id="t-rodape"></span>
   </div>
 </footer>
 
 <script>
-const PRESETS = [
-  { rotulo: "4 de 25 promoções ativas", tool: "promocoes_ativas", args: {},
-    porque: "Só 4 das 25 promoções da base estão ativas. A view de preço aplica o maior desconto entre as ativas, porque promoção não é cumulativa (§6.2) e promoção vencida não pode ser prometida (§7.3)." },
-  { rotulo: "PIX não acumula com promoção", tool: "calcular_preco", args: { product_id: 121 },
-    porque: "Repare em `pix.desconto_pix_aplicado: false` e em `max_parcelas: 5`. Os 5% do PIX não incidem sobre preço já promocional (§6.2), e o parcelamento respeita a parcela mínima por faixa (§3.1). É o caso que um LLM quase acerta." },
-  { rotulo: "LGPD trava o pedido", tool: "consultar_pedido", args: { order_id: 1 },
-    porque: "Nenhum dado do cliente volta no payload — só a instrução de confirmar identidade. Número de pedido é sequencial e trivial de adivinhar, e o §9 trata de proteção de dados." },
-  { rotulo: "Frete grátis, com a regra citada", tool: "calcular_frete", args: { cidade: "Campo Grande", valor_do_pedido: 2500 },
-    porque: "Grátis acima de R$ 500 na região metropolitana, e a resposta carrega a regra que justifica o valor (§5.1) em vez de só o número." },
-  { rotulo: "Frete que não dá para inventar", tool: "calcular_frete", args: { cidade: "Sao Paulo", valor_do_pedido: 2500 },
-    porque: "`valor_frete: null`. Fora da região metropolitana o manual remete a cotação por CEP, peso e dimensão — e a base não tem peso nem dimensão. Informa modalidades e prazos, e não estima um número." },
-  { rotulo: "Política com citação de seção", tool: "consultar_politicas", args: { pergunta: "qual o prazo para devolucao" },
-    porque: "BM25 sobre o manual, com o §4.1 no topo. O chunking segue o sumário do documento, não um tamanho fixo: corte cego separaria “7 dias corridos” do título da regra e produziria resposta confiante e errada." },
-  { rotulo: "Modelo exato ausente, alternativa real", tool: "buscar_produtos", args: { termo: "Fender Stratocaster American Professional" },
-    porque: "O catálogo tem a American Pro II, não a “American Professional”. A busca exige todos os termos, então o resultado vem vazio — e aí, e só aí, ela devolve `produtos_parecidos`, porque o §7.3 manda oferecer alternativa em vez de só avisar." },
-  { rotulo: "Marca que não existe mesmo", tool: "buscar_produtos", args: { termo: "Gretsch G2622 Streamliner" },
-    porque: "Nenhum termo casa, e nenhuma sugestão é inventada. O diagnóstico explica por que veio vazio — “nenhum resultado” seco é o que faz o modelo improvisar." },
-  { rotulo: "Devolução: veredito com data-limite", tool: "verificar_elegibilidade_devolucao", args: { order_id: 1 },
-    porque: "Também exige identidade antes de tratar do pedido. Com a confirmação, cruza os três prazos (7 dias de arrependimento, 30 de troca por defeito, 90 de garantia legal) em aritmética, não em interpretação." },
-  { rotulo: "Busca com teto de preço", tool: "buscar_produtos", args: { termo: "violao", preco_max: 1000 },
-    porque: "Normalização sem acento resolvida no ETL: “violao” encontra “Violão” sem custo em tempo de consulta." },
+const CASOS = [
+  { tool: 'promocoes_ativas', args: {},
+    pt: { rotulo: '4 de 25 promoções ativas',
+          porque: 'Só 4 das 25 promoções da base estão ativas. A view de preço aplica o maior desconto entre as ativas, porque promoção não é cumulativa (§6.2) e promoção vencida não pode ser prometida (§7.3).' },
+    en: { rotulo: '4 of 25 promotions are active',
+          porque: 'Only 4 of the 25 promotions in the dataset are active. The pricing view applies the largest discount among the active ones, because promotions do not stack (§6.2) and an expired promotion must never be offered (§7.3).' } },
+  { tool: 'calcular_preco', args: { product_id: 121 },
+    pt: { rotulo: 'PIX não acumula com promoção',
+          porque: 'Repare em `pix.desconto_pix_aplicado: false` e em `max_parcelas: 5`. Os 5% do PIX não incidem sobre preço já promocional (§6.2), e o parcelamento respeita a parcela mínima por faixa (§3.1). É o caso que um LLM quase acerta.' },
+    en: { rotulo: 'PIX discount does not stack',
+          porque: 'Look at `pix.desconto_pix_aplicado: false` and `max_parcelas: 5`. The 5% PIX discount does not apply on an already discounted price (§6.2), and installments respect the minimum per tier (§3.1). This is the case an LLM almost gets right.' } },
+  { tool: 'consultar_pedido', args: { order_id: 1 },
+    pt: { rotulo: 'LGPD trava o pedido',
+          porque: 'Nenhum dado do cliente volta no payload — só a instrução de confirmar identidade. Número de pedido é sequencial e trivial de adivinhar, e o §9 trata de proteção de dados.' },
+    en: { rotulo: 'Data protection blocks the order',
+          porque: 'No customer data comes back in the payload — only the instruction to verify identity first. Order numbers are sequential and trivial to guess, and §9 covers data protection.' } },
+  { tool: 'calcular_frete', args: { cidade: 'Campo Grande', valor_do_pedido: 2500 },
+    pt: { rotulo: 'Frete grátis, com a regra citada',
+          porque: 'Grátis acima de R$ 500 na região metropolitana, e a resposta carrega a regra que justifica o valor (§5.1) em vez de só o número.' },
+    en: { rotulo: 'Free shipping, with the rule cited',
+          porque: 'Free above R$ 500,00 in the metropolitan area, and the response carries the rule that justifies the amount (§5.1), not just the number.' } },
+  { tool: 'calcular_frete', args: { cidade: 'Sao Paulo', valor_do_pedido: 2500 },
+    pt: { rotulo: 'Frete que não dá para inventar',
+          porque: '`valor_frete: null`. Fora da região metropolitana o manual remete a cotação por CEP, peso e dimensão — e a base não tem peso nem dimensão. Informa modalidades e prazos, e não estima um número.' },
+    en: { rotulo: 'Shipping that cannot be invented',
+          porque: '`valor_frete: null`. Outside the metropolitan area the manual defers to a quote based on postcode, weight and dimensions — and the dataset has neither weight nor dimensions. It reports carriers and lead times, and estimates no number.' } },
+  { tool: 'consultar_politicas', args: { pergunta: 'qual o prazo para devolucao' },
+    pt: { rotulo: 'Política com citação de seção',
+          porque: 'BM25 sobre o manual, com o §4.1 no topo. O chunking segue o sumário do documento, não um tamanho fixo: corte cego separaria “7 dias corridos” do título da regra e produziria resposta confiante e errada.' },
+    en: { rotulo: 'Policy with section citation',
+          porque: 'BM25 over the manual, with §4.1 on top. Chunking follows the document outline, not a fixed size: a blind cut would separate “7 dias corridos” from the rule title and produce a confident, wrong answer.' } },
+  { tool: 'buscar_produtos', args: { termo: 'Fender Stratocaster American Professional' },
+    pt: { rotulo: 'Modelo exato ausente, alternativa real',
+          porque: 'O catálogo tem a American Pro II, não a “American Professional”. A busca exige todos os termos, então o resultado vem vazio — e aí, e só aí, ela devolve `produtos_parecidos`, porque o §7.3 manda oferecer alternativa em vez de só avisar.' },
+    en: { rotulo: 'Exact model missing, real alternative',
+          porque: 'The catalogue has the American Pro II, not the “American Professional”. Search requires every term to match, so the result is empty — and only then does it return `produtos_parecidos`, because §7.3 requires offering an alternative rather than just reporting the absence.' } },
+  { tool: 'buscar_produtos', args: { termo: 'Gretsch G2622 Streamliner' },
+    pt: { rotulo: 'Marca que não existe mesmo',
+          porque: 'Nenhum termo casa, e nenhuma sugestão é inventada. O diagnóstico explica por que veio vazio — “nenhum resultado” seco é o que faz o modelo improvisar.' },
+    en: { rotulo: 'A brand that truly is not there',
+          porque: 'No term matches, and no suggestion is invented. The diagnosis explains why it came back empty — a bare “no results” is what makes a model improvise.' } },
+  { tool: 'verificar_elegibilidade_devolucao', args: { order_id: 1 },
+    pt: { rotulo: 'Devolução: veredito com data-limite',
+          porque: 'Também exige identidade antes de tratar do pedido. Com a confirmação, cruza os três prazos (7 dias de arrependimento, 30 de troca por defeito, 90 de garantia legal) em aritmética, não em interpretação.' },
+    en: { rotulo: 'Returns: verdict with a deadline',
+          porque: 'It also requires identity before discussing the order. Once confirmed, it crosses the three windows (7 days to change your mind, 30 for defect exchange, 90 of legal warranty) by arithmetic, not interpretation.' } },
+  { tool: 'buscar_produtos', args: { termo: 'violao', preco_max: 1000 },
+    pt: { rotulo: 'Busca com teto de preço',
+          porque: 'Normalização sem acento resolvida no ETL: “violao” encontra “Violão” sem custo em tempo de consulta.' },
+    en: { rotulo: 'Search with a price ceiling',
+          porque: 'Accent-insensitive normalisation resolved in the ETL: “violao” finds “Violão” at no query-time cost.' } },
 ];
+
+const TEXTOS = {
+  pt: {
+    lang: 'pt-BR',
+    titulo: 'Camada determinística',
+    sub: 'As 11 ferramentas do agente, executadas direto sobre os dados reais da loja — sem LLM no caminho.',
+    linkChat: '← Conversar com o Téo', linkFerr: 'Ferramentas', linkApi: 'API (OpenAPI)', linkDiag: 'Diagnóstico',
+    idiomaRotulo: 'EN', idiomaTitulo: 'Switch the interface to English',
+    temaTitulo: 'Alterna entre tema claro e escuro',
+    nota: '<strong>Por que esta página existe.</strong> A tese do projeto é que o LLM decide <em>o que</em> perguntar e <em>como</em> conversar, mas preço, prazo, frete e disponibilidade saem de código Python testado. Aqui esse código roda sozinho: nenhuma chamada de modelo, nenhuma chave de API, nenhuma cota. <strong>Esta parte do serviço nunca fica indisponível</strong> — e é a mesma camada que o agente consulta ao conversar.',
+    roteiro: 'Roteiro sugerido', lista: 'Ferramentas',
+    executar: 'Executar', carregando: 'Carregando…', executando: 'executando…',
+    semArgumentos: 'Esta ferramenta não recebe argumentos.',
+    obrigatorio: 'obrigatório', semLLM: 'sem LLM', falhaRede: 'falha de rede: ',
+    falhaCarregar: 'Não foi possível carregar as ferramentas.',
+    rodape: 'Empório da Música · loja fictícia do Desafio Técnico AI Engineer. Os dados são os fornecidos no desafio. Código e justificativa de cada decisão no <a href="https://github.com/ReversaOfficial/DesafioT-cnicoAIEngineer2026-GianFerraz-">repositório</a>.'
+  },
+  en: {
+    lang: 'en',
+    titulo: 'Deterministic layer',
+    sub: "The agent's 11 tools, run directly against the store's real data — with no LLM in the path.",
+    linkChat: '← Chat with Téo', linkFerr: 'Tools', linkApi: 'API (OpenAPI)', linkDiag: 'Diagnostics',
+    idiomaRotulo: 'PT', idiomaTitulo: 'Mudar a interface para português',
+    temaTitulo: 'Toggle between light and dark theme',
+    nota: '<strong>Why this page exists.</strong> The thesis of the project is that the LLM decides <em>what</em> to ask and <em>how</em> to talk, while price, deadlines, shipping and availability come out of tested Python. Here that code runs on its own: no model call, no API key, no quota. <strong>This part of the service never goes down</strong> — and it is the same layer the agent queries while talking. <em>Tool names, parameters and responses stay in Portuguese: that is the real API contract, not a translation gap.</em>',
+    roteiro: 'Suggested tour', lista: 'Tools',
+    executar: 'Run', carregando: 'Loading…', executando: 'running…',
+    semArgumentos: 'This tool takes no arguments.',
+    obrigatorio: 'required', semLLM: 'no LLM', falhaRede: 'network failure: ',
+    falhaCarregar: 'Could not load the tools.',
+    rodape: 'Empório da Música · a fictional store from the AI Engineer technical challenge. The data is the one provided in the challenge. Code and the rationale for every decision in the <a href="https://github.com/ReversaOfficial/DesafioT-cnicoAIEngineer2026-GianFerraz-">repository</a>.'
+  }
+};
+
+let idioma = localStorage.getItem('emporio_idioma') === 'en' ? 'en' : 'pt';
+let tema   = localStorage.getItem('emporio_tema') === 'light' ? 'light' : 'dark';
+const T = () => TEXTOS[idioma];
 
 let ferramentas = [];
 let atual = null;
@@ -219,7 +315,7 @@ async function carregar() {
     renderPresets();
     selecionar(ferramentas[0]?.nome);
   } catch (e) {
-    el("cabecalho").innerHTML = '<p class="desc">Não foi possível carregar as ferramentas.</p>';
+    el("cabecalho").innerHTML = `<p class="desc">${T().falhaCarregar}</p>`;
   }
 }
 
@@ -242,13 +338,13 @@ function renderLista() {
 
 function renderPresets() {
   el("presets").innerHTML = "";
-  PRESETS.forEach((p) => {
+  CASOS.forEach((c) => {
     const b = document.createElement("button");
     b.className = "chip";
-    b.innerHTML = "<b>▸</b> " + p.rotulo;
+    b.innerHTML = "<b>▸</b> " + c[idioma].rotulo;
     b.onclick = () => {
-      selecionar(p.tool, p.args);
-      executar(p.porque);
+      selecionar(c.tool, c.args);
+      executar(c[idioma].porque);
     };
     el("presets").appendChild(b);
   });
@@ -273,7 +369,7 @@ function selecionar(nome, valores) {
     div.className = "field";
     const obrig = req.includes(chave);
     const lab = document.createElement("label");
-    lab.innerHTML = chave + (obrig ? ' <span class="req">obrigatório</span>' : "");
+    lab.innerHTML = chave + (obrig ? ` <span class="req">${T().obrigatorio}</span>` : "");
     const inp = document.createElement("input");
     inp.id = "arg-" + chave;
     inp.placeholder = props[chave].description || props[chave].type || "";
@@ -283,7 +379,7 @@ function selecionar(nome, valores) {
     el("campos").appendChild(div);
   });
   if (!Object.keys(props).length) {
-    el("campos").innerHTML = '<p class="desc">Esta ferramenta não recebe argumentos.</p>';
+    el("campos").innerHTML = `<p class="desc">${T().semArgumentos}</p>`;
   }
   el("executar").disabled = false;
   el("saida").hidden = true;
@@ -302,7 +398,7 @@ async function executar(porque) {
 
   el("executar").disabled = true;
   el("status").className = "status";
-  el("status").textContent = "executando…";
+  el("status").textContent = T().executando;
   const t0 = performance.now();
   try {
     const r = await fetch("/api/tool/" + encodeURIComponent(atual.nome), {
@@ -315,7 +411,7 @@ async function executar(porque) {
     el("saida").hidden = false;
     el("saida").textContent = JSON.stringify(d.resultado !== undefined ? d.resultado : d, null, 2);
     if (r.ok) {
-      el("status").textContent = "HTTP " + r.status + " · " + ms + " ms · sem LLM";
+      el("status").textContent = `HTTP ${r.status} · ${ms} ms · ${T().semLLM}`;
     } else {
       el("status").className = "status err";
       el("status").textContent = "HTTP " + r.status + " · " + ms + " ms";
@@ -326,13 +422,61 @@ async function executar(porque) {
     }
   } catch (e) {
     el("status").className = "status err";
-    el("status").textContent = "falha de rede: " + e.message;
+    el("status").textContent = T().falhaRede + e.message;
   } finally {
     el("executar").disabled = false;
   }
 }
 
+function aplicarTema() {
+  document.documentElement.dataset.tema = tema;
+  el("btn-tema").textContent = tema === "dark" ? "☀" : "☾";
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", tema === "dark" ? "#11100e" : "#f3efe7");
+}
+
+function aplicarIdioma() {
+  const t = T();
+  document.documentElement.lang = t.lang;
+  document.title = t.titulo + " — Empório da Música";
+  el("t-titulo").textContent = t.titulo;
+  el("t-sub").textContent = t.sub;
+  el("lnk-chat").textContent = t.linkChat;
+  el("lnk-ferr").textContent = t.linkFerr;
+  el("lnk-api").textContent = t.linkApi;
+  el("lnk-diag").textContent = t.linkDiag;
+  el("btn-idioma").textContent = t.idiomaRotulo;
+  el("btn-idioma").title = t.idiomaTitulo;
+  el("btn-tema").title = t.temaTitulo;
+  el("t-nota").innerHTML = t.nota;
+  el("t-roteiro").textContent = t.roteiro;
+  el("t-lista").textContent = t.lista;
+  el("executar").textContent = t.executar;
+  el("t-rodape").innerHTML = t.rodape;
+  if (ferramentas.length) renderPresets();
+  // Antes de a lista chegar, o painel mostra "Carregando…": em inglês isso
+  // apareceria em português por um instante.
+  else el("cabecalho").innerHTML = `<p class="desc">${t.carregando}</p>`;
+}
+
+el("btn-tema").onclick = () => {
+  tema = tema === "dark" ? "light" : "dark";
+  localStorage.setItem("emporio_tema", tema);
+  aplicarTema();
+};
+
+el("btn-idioma").onclick = () => {
+  idioma = idioma === "pt" ? "en" : "pt";
+  localStorage.setItem("emporio_idioma", idioma);
+  aplicarIdioma();
+  // A descrição da ferramenta selecionada vem do schema da API, em português.
+  // Reselecionar mantém a tela coerente com o idioma dos rótulos em volta.
+  if (atual) selecionar(atual.nome);
+};
+
 el("executar").onclick = () => executar(null);
+aplicarTema();
+aplicarIdioma();
 carregar();
 </script>
 </body>

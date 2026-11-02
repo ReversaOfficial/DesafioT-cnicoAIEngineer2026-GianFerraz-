@@ -68,6 +68,13 @@ importam, e cada um explica a decisão que demonstra:
 É a mesma camada que o agente consulta ao conversar: o que aparece ali é o que
 ele recebe.
 
+As duas páginas têm **tema claro/escuro** e **português/inglês**, com a escolha
+guardada no navegador. A tradução não é só de rótulo: em inglês o agente também
+responde em inglês, porque o idioma viaja junto de cada requisição até o prompt
+do sistema. O que **não** se traduz está dito na própria interface — nome e
+retorno das ferramentas seguem em português, porque são o contrato real da API,
+e seção do manual, valor e formato (`R$ 2.199,00`) são citação, não prosa.
+
 ![A página de ferramentas, com o caso do PIX executado: HTTP 200 em 20ms, sem LLM](docs/img/explorador.jpg)
 
 <sub>O roteiro sugerido com o caso do PIX já executado. O rodapé da resposta

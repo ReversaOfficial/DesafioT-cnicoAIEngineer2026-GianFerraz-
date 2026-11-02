@@ -32,14 +32,63 @@
     --amber-soft: #3a2d14;
     --client: #2f4b3f;
     --client-text: #e8f3ec;
+    /* Tudo que antes estava escrito à mão virou variável, senão o tema claro
+       precisaria duplicar regra em vez de só trocar valor. */
+    --brilho: #241f16;
+    --sombra: 0 30px 70px rgba(0,0,0,.5);
+    --topo: linear-gradient(180deg, #211e18, #1b1a17);
+    --online: #5fa777;
+    --offline: #b4524a;
+    --linha-hover: #4a4337;
+    --sobre-amber: #1a1510;
+    --barra: #3b352b;
+    --sys-linha: #4b3f28;
+    --trace-linha: #4d3c18;
+    --trace-texto: #e2c489;
+    --trace-meta: #a4906a;
+    --chip-bg: #221f19;
+    --form-bg: #171611;
+    --input-bg: #221f19;
+    --rodape: #6f6859;
     --radius: 14px;
     --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  /* Tema claro. O escuro continua sendo o default do documento; aqui só os
+     valores que mudam. O âmbar escurece porque #d99b2b sobre branco não
+     alcança contraste suficiente para leitura. */
+  :root[data-tema="light"] {
+    --bg: #f3efe7;
+    --panel: #ffffff;
+    --panel-2: #f5f1e9;
+    --line: #e2dcd0;
+    --text: #1b1915;
+    --muted: #6b6457;
+    --amber: #9c6713;
+    --amber-soft: #fdf3e0;
+    --client-text: #eef7f1;
+    --brilho: #ffffff;
+    --sombra: 0 18px 44px rgba(60, 50, 30, .13);
+    --topo: linear-gradient(180deg, #fffdf8, #f7f3ea);
+    --online: #2f7a4b;
+    --offline: #a8392f;
+    --linha-hover: #c9c0ad;
+    --sobre-amber: #fffaf0;
+    --barra: #ccc4b4;
+    --sys-linha: #d9cdb2;
+    --trace-linha: #e7d3a6;
+    --trace-texto: #6d4b0d;
+    --trace-meta: #8a7a5c;
+    --chip-bg: #f7f3ea;
+    --form-bg: #f7f4ed;
+    --input-bg: #ffffff;
+    --rodape: #8a8275;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
     background:
-      radial-gradient(1100px 500px at 15% -10%, #241f16 0%, transparent 60%),
+      radial-gradient(1100px 500px at 15% -10%, var(--brilho) 0%, transparent 60%),
       var(--bg);
     color: var(--text);
     font-family: var(--font);
@@ -58,16 +107,17 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 30px 70px rgba(0,0,0,.5);
+    box-shadow: var(--sombra);
   }
 
   /* ---------- cabeçalho ---------- */
   header {
     display: flex;
     align-items: center;
-    gap: 13px;
+    flex-wrap: wrap;
+    gap: 13px 8px;
     padding: 15px 18px;
-    background: linear-gradient(180deg, #211e18, #1b1a17);
+    background: var(--topo);
     border-bottom: 1px solid var(--line);
   }
   .avatar {
@@ -83,9 +133,9 @@
   .who span { font-size: 12.5px; color: var(--muted); }
   .dot {
     display: inline-block; width: 7px; height: 7px;
-    border-radius: 50%; background: #5fa777; margin-right: 5px;
+    border-radius: 50%; background: var(--online); margin-right: 5px;
   }
-  .dot.off { background: #b4524a; }
+  .dot.off { background: var(--offline); }
   .hbtn {
     background: transparent;
     border: 1px solid var(--line);
@@ -96,9 +146,9 @@
     cursor: pointer;
     white-space: nowrap;
   }
-  .hbtn:hover { color: var(--text); border-color: #4a4337; }
+  .hbtn:hover { color: var(--text); border-color: var(--linha-hover); }
   a.hbtn { text-decoration: none; display: inline-block; }
-  .hbtn.on { color: #1a1510; background: var(--amber); border-color: var(--amber); }
+  .hbtn.on { color: var(--sobre-amber); background: var(--amber); border-color: var(--amber); }
 
   /* ---------- conversa ---------- */
   .chat {
@@ -109,7 +159,7 @@
     flex-direction: column;
     gap: 12px;
     scrollbar-width: thin;
-    scrollbar-color: #3b352b transparent;
+    scrollbar-color: var(--barra) transparent;
   }
   .row { display: flex; }
   .row.me { justify-content: flex-end; }
@@ -137,7 +187,7 @@
   .row.sys { justify-content: center; }
   .row.sys .bubble {
     background: transparent;
-    border: 1px dashed #4b3f28;
+    border: 1px dashed var(--sys-linha);
     color: var(--muted);
     font-size: 12.5px;
     max-width: 90%;
@@ -150,13 +200,13 @@
     margin: -4px 0 2px;
     padding: 8px 11px;
     background: var(--amber-soft);
-    border: 1px solid #4d3c18;
+    border: 1px solid var(--trace-linha);
     border-radius: 10px;
     font: 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-    color: #e2c489;
+    color: var(--trace-texto);
   }
   .trace b { color: var(--amber); font-weight: 600; }
-  .trace .meta { color: #a4906a; }
+  .trace .meta { color: var(--trace-meta); }
 
   /* ---------- digitando ---------- */
   .typing { display: flex; gap: 4px; padding: 13px 15px; }
@@ -174,7 +224,7 @@
     padding: 4px 18px 12px;
   }
   .chip {
-    background: #221f19;
+    background: var(--chip-bg);
     border: 1px solid var(--line);
     color: var(--muted);
     font: inherit; font-size: 12.5px;
@@ -189,14 +239,14 @@
   form {
     display: flex; gap: 9px;
     padding: 13px 15px;
-    background: #171611;
+    background: var(--form-bg);
     border-top: 1px solid var(--line);
   }
   textarea {
     flex: 1;
     resize: none;
     max-height: 120px;
-    background: #221f19;
+    background: var(--input-bg);
     border: 1px solid var(--line);
     border-radius: 12px;
     color: var(--text);
@@ -209,7 +259,7 @@
     width: 44px; flex-shrink: 0;
     border: none; border-radius: 12px;
     background: var(--amber);
-    color: #1a1510;
+    color: var(--sobre-amber);
     font-size: 17px;
     cursor: pointer;
   }
@@ -217,7 +267,7 @@
   footer {
     padding: 8px 18px 13px;
     font-size: 11px;
-    color: #6f6859;
+    color: var(--rodape);
     text-align: center;
   }
   @media (max-width: 600px) {
@@ -237,7 +287,9 @@
     </div>
     <button class="hbtn" id="btn-trace" title="Mostra quais consultas o agente fez">consultas</button>
     <button class="hbtn" id="btn-reset" title="Começa uma conversa nova">nova</button>
-    <a class="hbtn" href="/ferramentas" title="Roda as 11 ferramentas sem LLM, sem cota">ferramentas</a>
+    <a class="hbtn" href="/ferramentas" id="lnk-ferramentas" title="Roda as 11 ferramentas sem LLM, sem cota">ferramentas</a>
+    <button class="hbtn" id="btn-idioma" title="Switch the interface to English">EN</button>
+    <button class="hbtn" id="btn-tema" title="Alterna entre tema claro e escuro">☀</button>
   </header>
 
   <div class="chat" id="chat"></div>
@@ -247,7 +299,7 @@
     <textarea id="input" rows="1" placeholder="Escreva sua mensagem…" autocomplete="off"></textarea>
     <button class="send" id="send" type="submit" aria-label="Enviar">➤</button>
   </form>
-  <footer>Assistente virtual · Rua 14 de Maio, 3200 — Centro, Campo Grande/MS · (67) 3341-4444</footer>
+  <footer id="rodape">Assistente virtual · Rua 14 de Maio, 3200 — Centro, Campo Grande/MS · (67) 3341-4444</footer>
 </div>
 
 <script>
@@ -259,21 +311,90 @@ const chips   = document.getElementById('chips');
 const statusEl= document.getElementById('status');
 const btnTrace= document.getElementById('btn-trace');
 const btnReset= document.getElementById('btn-reset');
+const btnIdioma = document.getElementById('btn-idioma');
+const btnTema   = document.getElementById('btn-tema');
+const lnkFerr   = document.getElementById('lnk-ferramentas');
+const rodapeEl  = document.getElementById('rodape');
 
 // A sessão fica no sessionStorage: recarregar a página não perde a conversa,
 // e o histórico vive no servidor de todo modo.
 let sessionId = sessionStorage.getItem('emporio_session') || null;
 let showTrace = localStorage.getItem('emporio_trace') === '1';
+// Idioma e tema sobrevivem ao recarregamento, mas ficam no navegador de quem
+// visita: nao sao estado do servidor nem entram na conversa persistida.
+let idioma = localStorage.getItem('emporio_idioma') === 'en' ? 'en' : 'pt';
+let tema   = localStorage.getItem('emporio_tema') === 'light' ? 'light' : 'dark';
 let busy = false;
 
-const SUGESTOES = [
-  'Quais violões vocês têm até R$ 1.000?',
-  'Quanto custa o Takamine GD20?',
-  'Qual o endereço da loja?',
-  'Me arrependi da compra, posso devolver o pedido 7?',
-  'Tem alguma promoção rolando?',
-  'Vocês vendem cordas e palhetas?'
-];
+const TEXTOS = {
+  pt: {
+    lang: 'pt-BR',
+    trace: 'consultas',      traceTitulo: 'Mostra quais consultas o agente fez',
+    reset: 'nova',           resetTitulo: 'Começa uma conversa nova',
+    ferramentas: 'ferramentas', ferrTitulo: 'Roda as 11 ferramentas sem LLM, sem cota',
+    idiomaRotulo: 'EN',      idiomaTitulo: 'Switch the interface to English',
+    temaTitulo: 'Alterna entre tema claro e escuro',
+    placeholder: 'Escreva sua mensagem…',
+    enviarAria: 'Enviar',
+    rodape: 'Assistente virtual · Rua 14 de Maio, 3200 — Centro, Campo Grande/MS · (67) 3341-4444',
+    conectando: 'conectando…',
+    online: 'online',
+    semConfig: 'configuração incompleta',
+    semServidor: 'servidor indisponível',
+    semChave: 'O agente de conversa está sem chave de API configurada. '
+      + 'Rodando local, preencha GEMINI_API_KEY no .env e reinicie. '
+      + 'De todo modo, a camada determinística não depende de modelo: '
+      + 'abra /ferramentas para consultar preço, frete, prazo e políticas '
+      + 'sobre os dados reais da loja.',
+    semDados: 'Os dados ainda não foram carregados. Rode: emporio build',
+    atalho: '→ abrir a camada determinística',
+    semRede: 'Não consegui falar com o servidor. Ele ainda está rodando?',
+    falhaHttp: (st) => `Falha na requisição (HTTP ${st}).`,
+    sugestoes: [
+      'Quais violões vocês têm até R$ 1.000?',
+      'Quanto custa o Takamine GD20?',
+      'Qual o endereço da loja?',
+      'Me arrependi da compra, posso devolver o pedido 7?',
+      'Tem alguma promoção rolando?',
+      'Vocês vendem cordas e palhetas?'
+    ]
+  },
+  en: {
+    lang: 'en',
+    trace: 'lookups',        traceTitulo: 'Shows which tools the agent queried',
+    reset: 'new',            resetTitulo: 'Starts a new conversation',
+    ferramentas: 'tools',    ferrTitulo: 'Runs the 11 tools with no LLM and no quota',
+    idiomaRotulo: 'PT',      idiomaTitulo: 'Mudar a interface para português',
+    temaTitulo: 'Toggle between light and dark theme',
+    placeholder: 'Write your message…',
+    enviarAria: 'Send',
+    rodape: 'Virtual assistant · Rua 14 de Maio, 3200 — Centro, Campo Grande/MS · +55 67 3341-4444',
+    conectando: 'connecting…',
+    online: 'online',
+    semConfig: 'incomplete configuration',
+    semServidor: 'server unavailable',
+    semChave: 'The conversational agent has no API key configured. '
+      + 'Running locally, fill in GEMINI_API_KEY in your .env and restart. '
+      + 'Either way, the deterministic layer needs no model: '
+      + 'open /ferramentas to check prices, shipping, deadlines and policies '
+      + 'against the store\'s real data.',
+    semDados: 'Data has not been loaded yet. Run: emporio build',
+    atalho: '→ open the deterministic layer',
+    semRede: 'I could not reach the server. Is it still running?',
+    falhaHttp: (st) => `Request failed (HTTP ${st}).`,
+    sugestoes: [
+      'Which acoustic guitars do you have under R$ 1,000?',
+      'How much is the Takamine GD20?',
+      "What is the store's address?",
+      'I changed my mind, can I return order 7?',
+      'Any promotions running?',
+      'Do you sell strings and picks?'
+    ]
+  }
+};
+const T = () => TEXTOS[idioma];
+
+
 
 function syncTraceButton() {
   btnTrace.classList.toggle('on', showTrace);
@@ -335,7 +456,7 @@ function hideTyping() {
 
 function renderChips() {
   chips.innerHTML = '';
-  SUGESTOES.forEach(texto => {
+  T().sugestoes.forEach(texto => {
     const b = document.createElement('button');
     b.className = 'chip';
     b.type = 'button';
@@ -351,34 +472,25 @@ async function boot() {
     const ok = health.status === 'ok';
     statusEl.innerHTML =
       `<span class="dot ${ok ? '' : 'off'}"></span>` +
-      (ok ? `online · ${health.llm.modelo}` : 'configuração incompleta');
+      (ok ? `${T().online} · ${health.llm.modelo}` : T().semConfig);
     if (!ok) {
       // A mensagem precisa servir aos dois contextos: quem rodou local
       // esqueceu o .env, e quem abriu o site hospedado pegou a cota ou a
       // configuração incompleta. Em qualquer um dos casos, a camada
       // determinística continua de pé — então aponta para ela em vez de
       // deixar a pessoa numa tela morta.
-      addBubble(
-        !health.llm.chave_configurada
-          ? 'O agente de conversa está sem chave de API configurada. '
-            + 'Rodando local, preencha GEMINI_API_KEY no .env e reinicie. '
-            + 'De todo modo, a camada determinística não depende de modelo: '
-            + 'abra /ferramentas para consultar preço, frete, prazo e políticas '
-            + 'sobre os dados reais da loja.'
-          : 'Os dados ainda não foram carregados. Rode: emporio build',
-        'sys'
-      );
+      addBubble(health.llm.chave_configurada ? T().semDados : T().semChave, 'sys');
       const atalho = addBubble('', 'sys');
       atalho.querySelector('.bubble').innerHTML =
-        '<a href="/ferramentas" style="color:var(--amber)">→ abrir a camada determinística</a>';
+        `<a href="/ferramentas" style="color:var(--amber)">${T().atalho}</a>`;
       return;
     }
   } catch {
-    statusEl.innerHTML = '<span class="dot off"></span>servidor indisponível';
+    statusEl.innerHTML = `<span class="dot off"></span>${T().semServidor}`;
     return;
   }
 
-  const saudacao = await fetch('/api/saudacao').then(r => r.json());
+  const saudacao = await fetch(`/api/saudacao?idioma=${idioma}`).then(r => r.json());
   addBubble(saudacao.mensagem, 'them');
   renderChips();
   input.focus();
@@ -399,13 +511,14 @@ async function enviar(texto) {
       body: JSON.stringify({
         mensagem: texto,
         session_id: sessionId,
+        idioma: idioma,
         incluir_trace: showTrace
       })
     });
     hideTyping();
     if (!res.ok) {
       const erro = await res.json().catch(() => ({}));
-      addBubble(erro.detail || `Falha na requisição (HTTP ${res.status}).`, 'sys');
+      addBubble(erro.detail || T().falhaHttp(res.status), 'sys');
       return;
     }
     const data = await res.json();
@@ -415,7 +528,7 @@ async function enviar(texto) {
     addBubble(data.resposta, 'them');
   } catch (e) {
     hideTyping();
-    addBubble('Não consegui falar com o servidor. Ele ainda está rodando?', 'sys');
+    addBubble(T().semRede, 'sys');
   } finally {
     busy = false;
     sendBtn.disabled = false;
@@ -457,7 +570,49 @@ btnReset.addEventListener('click', () => {
   boot();
 });
 
+function aplicarTema() {
+  document.documentElement.dataset.tema = tema;
+  btnTema.textContent = tema === 'dark' ? '☀' : '☾';
+  // A cor da barra do navegador em mobile acompanha o tema.
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', tema === 'dark' ? '#11100e' : '#f3efe7');
+}
+
+function aplicarIdioma() {
+  const t = T();
+  document.documentElement.lang = t.lang;
+  btnTrace.textContent = t.trace;        btnTrace.title = t.traceTitulo;
+  btnReset.textContent = t.reset;        btnReset.title = t.resetTitulo;
+  lnkFerr.textContent = t.ferramentas;   lnkFerr.title = t.ferrTitulo;
+  btnIdioma.textContent = t.idiomaRotulo; btnIdioma.title = t.idiomaTitulo;
+  btnTema.title = t.temaTitulo;
+  input.placeholder = t.placeholder;
+  sendBtn.setAttribute('aria-label', t.enviarAria);
+  rodapeEl.textContent = t.rodape;
+  if (chips.children.length) renderChips();
+}
+
+btnTema.addEventListener('click', () => {
+  tema = tema === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('emporio_tema', tema);
+  aplicarTema();
+});
+
+btnIdioma.addEventListener('click', () => {
+  idioma = idioma === 'pt' ? 'en' : 'pt';
+  localStorage.setItem('emporio_idioma', idioma);
+  aplicarIdioma();
+  // As falas já ditas ficam como foram ditas: reescrevê-las seria inventar um
+  // histórico que não aconteceu. Mas se a conversa ainda não começou, a
+  // saudação é recarregada no idioma novo — e dali em diante o agente responde
+  // nele, porque o idioma vai junto de cada requisição.
+  const jaFalou = chat.querySelector('.row.me');
+  if (!jaFalou) { chat.innerHTML = ''; boot(); }
+});
+
 syncTraceButton();
+aplicarTema();
+aplicarIdioma();
 boot();
 </script>
 </body>

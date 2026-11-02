@@ -148,8 +148,12 @@ class Agent:
         self._schemas = tool_schemas()
 
     # ------------------------------------------------------------------
-    def send(self, user_message: str) -> AgentTurn:
-        """Processa uma mensagem do cliente e devolve a resposta do agente."""
+    def send(self, user_message: str, idioma: str = "pt") -> AgentTurn:
+        """Processa uma mensagem do cliente e devolve a resposta do agente.
+
+        `idioma` troca só a língua da resposta; o default preserva o
+        comportamento de sempre.
+        """
         started = time.perf_counter()
         added: list[Message] = []
 
@@ -160,7 +164,7 @@ class Agent:
 
         record(Message(role="user", content=user_message))
 
-        system = build_system_prompt()
+        system = build_system_prompt(idioma)
         invocations: list[ToolInvocation] = []
         usage = Usage()
         reply = ""

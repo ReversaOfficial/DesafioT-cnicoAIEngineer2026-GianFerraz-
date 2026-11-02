@@ -214,22 +214,55 @@ def _contexto_dinamico() -> str:
     return "\n".join(linhas)
 
 
-def build_system_prompt() -> str:
-    """Monta o prompt do sistema para o turno atual."""
-    return "\n\n".join(
-        [
-            PERSONA,
-            _contexto_dinamico(),
-            REGRAS_DURAS,
-            ROTEAMENTO,
-            ESCOPO,
-            FLUXO,
-            ESTILO,
-            # Fecho curto: a última instrução do prompt é a que o modelo
-            # costuma seguir com mais força.
-            "Agora atenda o cliente. Consulte antes de afirmar.",
-        ]
-    )
+# Instrução de idioma, anexada só quando a interface está em inglês. Fica no
+# fim do prompt de propósito: a última instrução é a que o modelo segue com
+# mais força, e aqui ela precisa vencer todo o prompt escrito em português.
+#
+# O que NÃO se traduz está dito explicitamente: os retornos das ferramentas
+# continuam em português, porque são o contrato real da API, e os números e as
+# seções do manual são citação, não prosa. Traduzir "§4.1" ou arredondar
+# "R$ 2.199,00" seria perder a rastreabilidade que o projeto inteiro defende.
+IDIOMA_INGLES = """\
+## Language
+
+Reply to the customer in **English**, even though these instructions are in \
+Portuguese. Keep everything else exactly as instructed above.
+
+Do not translate: section references from the store manual (§3.1, §4.1, §6.2, \
+§9), product names, the store name, monetary values and their formatting \
+(R$ 2.199,00 stays as it is, with the comma as decimal separator), phone \
+numbers, the address, and dates in DD/MM/YYYY. These are citations and data, \
+not prose — translating or reformatting them breaks traceability back to the \
+source the answer came from.
+
+Tool results arrive in Portuguese. That is the API contract, not a mistake: \
+read them as they are and write your answer in English."""
+
+
+def build_system_prompt(idioma: str = "pt") -> str:
+    """Monta o prompt do sistema para o turno atual.
+
+    `idioma` muda apenas a língua da resposta ao cliente, não as regras: o
+    default mantém o comportamento de sempre, então nada do que já existia
+    depende deste parâmetro.
+    """
+    partes = [
+        PERSONA,
+        _contexto_dinamico(),
+        REGRAS_DURAS,
+        ROTEAMENTO,
+        ESCOPO,
+        FLUXO,
+        ESTILO,
+    ]
+    if idioma == "en":
+        partes.append(IDIOMA_INGLES)
+        partes.append("Now serve the customer. Look it up before stating it.")
+    else:
+        # Fecho curto: a última instrução do prompt é a que o modelo
+        # costuma seguir com mais força.
+        partes.append("Agora atenda o cliente. Consulte antes de afirmar.")
+    return "\n\n".join(partes)
 
 
 # Primeira mensagem, usada pelo CLI e pela UI web.
@@ -239,3 +272,15 @@ SAUDACAO_INICIAL = (
     "pagamento, consultar um pedido ou tirar dúvida sobre troca, frete e "
     "garantia. O que você precisa?"
 )
+
+SAUDACAO_INICIAL_EN = (
+    f"Hi! I'm {AGENT_NAME}, from {STORE.nome_fantasia}. 🎸\n"
+    "I can help you find an instrument, check prices and payment options, "
+    "look up an order, or answer questions about returns, shipping and "
+    "warranty. What do you need?"
+)
+
+
+def saudacao(idioma: str = "pt") -> str:
+    """Primeira mensagem no idioma pedido."""
+    return SAUDACAO_INICIAL_EN if idioma == "en" else SAUDACAO_INICIAL

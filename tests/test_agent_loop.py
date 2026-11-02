@@ -242,3 +242,59 @@ class TestRegistroDoTurno:
 def FakeTexto(conteudo: str) -> LLMResponse:
     """Atalho local: resposta de texto puro com uso de tokens fixo."""
     return LLMResponse(text=conteudo, usage=Usage(10, 5))
+
+
+class TestIdiomaDaResposta:
+    """O idioma troca a língua da resposta, não as regras do agente.
+
+    A interface web tem um botão de tradução; isso só tem valor se o agente
+    acompanhar. O default existe para que nada do que já estava escrito —
+    testes, eval, CLI — dependa do parâmetro.
+    """
+
+    def test_default_nao_mexe_no_prompt(self):
+        from emporio.agent.prompts import build_system_prompt
+
+        assert build_system_prompt() == build_system_prompt("pt")
+        assert "Reply to the customer" not in build_system_prompt()
+
+    def test_ingles_instrui_a_responder_em_ingles(self):
+        from emporio.agent.prompts import build_system_prompt
+
+        prompt = build_system_prompt("en")
+        assert "Reply to the customer in **English**" in prompt
+        # As regras continuam lá: o idioma é um acréscimo, não uma troca.
+        assert "§9" in prompt or "LGPD" in prompt.upper() or "proteção de dados" in prompt
+
+    def test_ingles_protege_o_que_e_citacao(self):
+        """Seção do manual, valor e formato são dado, não prosa traduzível."""
+        prompt = __import__(
+            "emporio.agent.prompts", fromlist=["build_system_prompt"]
+        ).build_system_prompt("en")
+        assert "Do not translate" in prompt
+        assert "R$ 2.199,00" in prompt
+        assert "§4.1" in prompt
+
+    def test_idioma_chega_ao_modelo(self, fake_llm):
+        """O parâmetro atravessa serviço e laço até o prompt do sistema."""
+        from emporio.agent.service import AgentService
+
+        service = AgentService(client=fake_llm, persist=False)
+        sessao = service.open_session()
+
+        fake_llm.scripted = [fake_llm.texto("ok")]
+        service.send(sessao, "oi", idioma="en")
+        assert "Reply to the customer in **English**" in fake_llm.calls[-1]["system"]
+
+        fake_llm.scripted = [fake_llm.texto("ok")]
+        service.send(sessao, "oi")
+        assert "Reply to the customer" not in fake_llm.calls[-1]["system"]
+
+    def test_saudacao_nos_dois_idiomas(self):
+        from emporio.agent.prompts import saudacao
+
+        assert saudacao().startswith("Oi!")
+        assert saudacao("pt").startswith("Oi!")
+        assert saudacao("en").startswith("Hi!")
+        # O nome da loja não se traduz.
+        assert "Empório da Música" in saudacao("en")

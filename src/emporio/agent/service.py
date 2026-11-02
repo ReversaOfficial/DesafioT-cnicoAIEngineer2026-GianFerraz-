@@ -61,10 +61,10 @@ class AgentService:
         return handle
 
     # ------------------------------------------------------------------
-    def send(self, session_id: str, message: str) -> AgentTurn:
+    def send(self, session_id: str, message: str, idioma: str = "pt") -> AgentTurn:
         """Processa uma mensagem e persiste o turno."""
         handle = self._handle(session_id)
-        turn = handle.agent.send(message)
+        turn = handle.agent.send(message, idioma=idioma)
         handle.turns += 1
 
         if self.store is not None:
