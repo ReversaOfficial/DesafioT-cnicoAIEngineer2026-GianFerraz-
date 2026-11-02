@@ -338,12 +338,24 @@ async function boot() {
       `<span class="dot ${ok ? '' : 'off'}"></span>` +
       (ok ? `online · ${health.llm.modelo}` : 'configuração incompleta');
     if (!ok) {
+      // A mensagem precisa servir aos dois contextos: quem rodou local
+      // esqueceu o .env, e quem abriu o site hospedado pegou a cota ou a
+      // configuração incompleta. Em qualquer um dos casos, a camada
+      // determinística continua de pé — então aponta para ela em vez de
+      // deixar a pessoa numa tela morta.
       addBubble(
         !health.llm.chave_configurada
-          ? 'O agente está sem chave de API. Preencha o arquivo .env (GEMINI_API_KEY) e reinicie o servidor.'
+          ? 'O agente de conversa está sem chave de API configurada. '
+            + 'Rodando local, preencha GEMINI_API_KEY no .env e reinicie. '
+            + 'De todo modo, a camada determinística não depende de modelo: '
+            + 'abra /ferramentas para consultar preço, frete, prazo e políticas '
+            + 'sobre os dados reais da loja.'
           : 'Os dados ainda não foram carregados. Rode: emporio build',
         'sys'
       );
+      const atalho = addBubble('', 'sys');
+      atalho.querySelector('.bubble').innerHTML =
+        '<a href="/ferramentas" style="color:var(--amber)">→ abrir a camada determinística</a>';
       return;
     }
   } catch {
